@@ -7,7 +7,11 @@
  *
  *   RDPServer [PASSWORD=pw | NOPASSWORD] [PORT=n] [BPP=15|16|24|32]
  *             [INTERVAL=ms] [SCAN=n] [NOCOMPRESS] [NOCLIPBOARD] [NOBEEP]
- *             [NEGFAIL] [VERBOSE]
+ *             [NEWKEY] [NEGFAIL] [VERBOSE]
+ *
+ * Server key: each install has its own RSA key, generated on the first run
+ * (a few seconds on a 68060) and kept in ENVARC:RDPServer/ServerKey; no key
+ * is compiled into the binary. NEWKEY replaces it.
  *
  * Without PASSWORD the password is read from ENV:RDPServer/Password; with
  * neither (and no NOPASSWORD) the server refuses to start. Clients see a
@@ -76,7 +80,7 @@ unsigned long __stack = 65536;          /* honoured by libnix */
 struct Library *SocketBase;
 struct Library *RdpCyberGfxBase;
 
-static const char version[] __attribute__((used)) = "$VER: RDPServer 0.9 (22.10.2026)";
+static const char version[] __attribute__((used)) = "$VER: RDPServer 1.0 (22.10.2026)";
 
 #define TILE 64
 
@@ -138,6 +142,38 @@ static void stir(const void *data, size_t len)
     sha1_final(&c, pool);
 }
 
+/* More entropy before generating a key: timing jitter between the beam
+ * position, the CIA timers and the CPU, plus system state. */
+static void gather_entropy(void)
+{
+    volatile UBYTE *ciaa_tod = (volatile UBYTE *)0xbfe801;
+    volatile UBYTE *ciab_ta = (volatile UBYTE *)0xbfd400;
+    volatile UWORD *vhposr = (volatile UWORD *)0xdff006;
+    struct DateStamp ds;
+    UBYTE sample[64];
+    ULONG mem[3];
+    int i, j;
+
+    for (i = 0; i < 256; i++) {
+        for (j = 0; j < (int)sizeof(sample); j += 4) {
+            volatile int spin = (*vhposr ^ *ciab_ta) & 15;
+            while (spin--)
+                ;
+            sample[j] = (UBYTE)*vhposr;
+            sample[j + 1] = *ciab_ta;
+            sample[j + 2] = *ciaa_tod;
+            sample[j + 3] = (UBYTE)(*vhposr >> 8);
+        }
+        stir(sample, sizeof(sample));
+    }
+    DateStamp(&ds);
+    mem[0] = AvailMem(MEMF_ANY);
+    mem[1] = AvailMem(MEMF_CHIP);
+    mem[2] = (ULONG)FindTask(NULL);
+    stir(&ds, sizeof(ds));
+    stir(mem, sizeof(mem));
+}
+
 static void get_random(void *ctx, uint8_t *out, size_t len)
 {
     static ULONG counter;
@@ -149,6 +185,83 @@ static void get_random(void *ctx, uint8_t *out, size_t len)
         memcpy(out, pool, n);   /* hand out 16 of the 20 bytes */
         out += n; len -= n;
     }
+}
+
+/* ------------------------------------------------------------------ */
+/* Server key (ENVARC:RDPServer/ServerKey)                            */
+/* ------------------------------------------------------------------ */
+
+#define KEY_DIR   "ENVARC:RDPServer"
+#define KEY_FILE  KEY_DIR "/ServerKey"
+#define KEY_MAGIC "RDPKEY01"
+
+/* File: 8-byte magic, 64-byte modulus, 64-byte private exponent (both
+ * little-endian), 4-byte public exponent (big-endian). */
+static int load_key(uint8_t n[64], uint8_t d[64], uint32_t *e)
+{
+    UBYTE buf[8 + 64 + 64 + 4];
+    BPTR fh = Open((STRPTR)KEY_FILE, MODE_OLDFILE);
+    LONG got;
+
+    if (!fh)
+        return -1;
+    got = Read(fh, buf, sizeof(buf));
+    Close(fh);
+    if (got != (LONG)sizeof(buf) || memcmp(buf, KEY_MAGIC, 8))
+        return -1;
+    memcpy(n, buf + 8, 64);
+    memcpy(d, buf + 72, 64);
+    *e = ((uint32_t)buf[136] << 24) | ((uint32_t)buf[137] << 16) | ((uint32_t)buf[138] << 8) | buf[139];
+    memset(buf, 0, sizeof(buf));
+    return 0;
+}
+
+static int save_key(const uint8_t n[64], const uint8_t d[64], uint32_t e)
+{
+    UBYTE buf[8 + 64 + 64 + 4];
+    BPTR lock = Lock((STRPTR)KEY_DIR, ACCESS_READ), fh;
+    LONG put;
+
+    if (!lock)
+        lock = CreateDir((STRPTR)KEY_DIR);
+    if (!lock)
+        return -1;
+    UnLock(lock);
+    memcpy(buf, KEY_MAGIC, 8);
+    memcpy(buf + 8, n, 64);
+    memcpy(buf + 72, d, 64);
+    buf[136] = (UBYTE)(e >> 24); buf[137] = (UBYTE)(e >> 16);
+    buf[138] = (UBYTE)(e >> 8); buf[139] = (UBYTE)e;
+    fh = Open((STRPTR)KEY_FILE, MODE_NEWFILE);
+    if (!fh)
+        return -1;
+    put = Write(fh, buf, sizeof(buf));
+    Close(fh);
+    memset(buf, 0, sizeof(buf));
+    return put == (LONG)sizeof(buf) ? 0 : -1;
+}
+
+/* Load this install's key, or generate (and save) one. */
+static int setup_key(int force_new)
+{
+    uint8_t n[64], d[64];
+    uint32_t e = 0;
+
+    if (force_new || load_key(n, d, &e) || rdp_set_server_key(n, d, e)) {
+        printf("Generating this Amiga's server key (once; takes a few seconds)...\n");
+        fflush(stdout);
+        gather_entropy();
+        if (rdp_generate_server_key(n, d, &e, get_random, NULL) || rdp_set_server_key(n, d, e)) {
+            printf("key generation failed\n");
+            return -1;
+        }
+        if (save_key(n, d, e))
+            printf("Could not save the key to %s: a new one will be made next time.\n", KEY_FILE);
+        else
+            printf("Saved to %s.\n", KEY_FILE);
+    }
+    memset(d, 0, sizeof(d));            /* the core keeps its own copy */
+    return 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1017,8 +1130,9 @@ int main(void)
 {
     static const char template[] =
         "PORT/K/N,BPP/K/N,INTERVAL/K/N,NEGFAIL/S,VERBOSE/S,PASSWORD/K,NOPASSWORD/S,NOCOMPRESS/S,"
-        "NOCLIPBOARD/S,NOBEEP/S,SCAN/K/N";
-    LONG args[11] = { 0 };
+        "NOCLIPBOARD/S,NOBEEP/S,SCAN/K/N,NEWKEY/S";
+    LONG args[12] = { 0 };
+    int newkey;
     struct RDArgs *rda;
     LONG lfd = -1;
     struct sockaddr_in addr;
@@ -1041,6 +1155,7 @@ int main(void)
     if (args[10]) opt.scan = *(LONG *)args[10];
     if (opt.scan < 1) opt.scan = 1;
     if (opt.scan > 16) opt.scan = 16;
+    newkey = args[11] != 0;
     if (args[5])
         strncpy(opt.password, (const char *)args[5], sizeof(opt.password) - 1);
     else if (!args[6] &&
@@ -1093,6 +1208,8 @@ int main(void)
         clip_port = NULL;
     }
     stir(&addr, sizeof(addr));          /* seed the pool */
+    if (setup_key(newkey))
+        goto out;
 
     lfd = socket(AF_INET, SOCK_STREAM, 0);
     if (lfd < 0)

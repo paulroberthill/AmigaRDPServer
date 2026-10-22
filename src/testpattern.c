@@ -15,6 +15,7 @@ static rdp_session *sess;
 static int box_x, box_y, box_dx, box_dy;
 static char last_key[64], last_mouse[64];
 static int resize_w, resize_h;      /* pending middle-click resize */
+static unsigned long generation;    /* bumped on every framebuffer change */
 static char *clip_text;
 static size_t clip_len;
 
@@ -23,6 +24,7 @@ enum { C_GREY, C_BLACK, C_WHITE, C_BLUE, C_ORANGE, C_RED, C_GREEN, C_BLUE2, C_YE
 static void fill(uint8_t *buf, int x, int y, int w, int h, int c)
 {
     int r;
+    generation++;
     if (x < 0) { w += x; x = 0; }
     if (y < 0) { h += y; y = 0; }
     if (x + w > W) w = W - x;
@@ -159,6 +161,7 @@ int tp_resize_requested(int *w, int *h)
     return 1;
 }
 
+unsigned long tp_generation(void) { return generation; }
 int tp_width(void) { return W; }
 int tp_height(void) { return H; }
 

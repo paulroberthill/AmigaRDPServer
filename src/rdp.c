@@ -1657,6 +1657,8 @@ rdp_session *rdp_session_new(const rdp_config *cfg, const rdp_callbacks *cb)
 {
     rdp_session *s;
 
+    if (!server_cert_len)       /* rdp_set_server_key() not called */
+        return NULL;
     if (cfg->width <= 0 || cfg->height <= 0 || (cfg->width & 3) ||
         (cfg->bpp != 8 && cfg->bpp != 15 && cfg->bpp != 16 && cfg->bpp != 24 &&
          cfg->bpp != 32))

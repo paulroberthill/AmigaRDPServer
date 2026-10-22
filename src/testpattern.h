@@ -25,6 +25,8 @@ int tp_resize_requested(int *w, int *h);
 int tp_resize(int w, int h);
 int tp_width(void);
 int tp_height(void);
+/* Incremented whenever the framebuffer changes. */
+unsigned long tp_generation(void);
 /* Fill in the input and clipboard callbacks. The pattern's clipboard
  * starts with TP_CLIP_TEXT; text from the client replaces it and is logged
  * (escaped) as "clipboard from client (N bytes): ...". */

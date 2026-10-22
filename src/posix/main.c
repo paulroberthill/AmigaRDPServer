@@ -18,6 +18,7 @@
 
 #include "../rdp.h"
 #include "../testpattern.h"
+#include "hostkey.h"
 
 static int net_send(void *ctx, const uint8_t *data, size_t len)
 {
@@ -130,10 +131,11 @@ static int serve(int fd, const rdp_config *cfg)
 static void usage(const char *argv0)
 {
     fprintf(stderr,
-            "usage: %s (-P password | -n) [-p port] [-b 8|15|16|24|32] [-W width] [-H height] [-u] [-f] [-v]\n"
+            "usage: %s (-P password | -n) [-p port] [-b 8|15|16|24|32] [-W width] [-H height] [-u] [-k] [-f] [-v]\n"
             "  -P   password clients must enter (or send as saved credentials)\n"
             "  -n   no password: anyone who can connect gets control\n"
             "  -u   send bitmaps uncompressed (default: RLE where the depth allows)\n"
+            "  -k   generate a fresh server key at startup (default: the build's key)\n"
             "  -f   refuse TLS with RDP_NEG_FAILURE (xrdp style) instead of\n"
             "       answering RDP_NEG_RSP with PROTOCOL_RDP\n"
             "  -v   verbose protocol logging\n", argv0);
@@ -143,12 +145,13 @@ static void usage(const char *argv0)
 int main(int argc, char **argv)
 {
     rdp_config cfg = { 0 };
-    int port = 3389, lfd, opt, one = 1, w = 640, h = 512, nopass = 0;
+    int port = 3389, lfd, opt, one = 1, w = 640, h = 512, nopass = 0, newkey = 0;
     struct sockaddr_in addr;
 
     cfg.bpp = 16;
-    while ((opt = getopt(argc, argv, "p:b:W:H:fvP:nu")) != -1) {
+    while ((opt = getopt(argc, argv, "p:b:W:H:fvP:nuk")) != -1) {
         switch (opt) {
+        case 'k': newkey = 1; break;
         case 'u': cfg.no_compress = 1; break;
         case 'P': cfg.password = optarg; break;
         case 'n': nopass = 1; break;
@@ -171,6 +174,19 @@ int main(int argc, char **argv)
     }
     cfg.width = w; cfg.height = h;
     cfg.fb = tp_fb(); cfg.palette = tp_palette();
+
+    if (newkey) {
+        uint8_t n[64], d[64];
+        uint32_t e;
+        if (rdp_generate_server_key(n, d, &e, get_random, NULL) || rdp_set_server_key(n, d, e)) {
+            fprintf(stderr, "key generation failed\n");
+            return 1;
+        }
+        printf("generated a new server key\n");
+    } else if (rdp_set_server_key(host_key_modulus, host_key_privexp, host_key_exponent)) {
+        fprintf(stderr, "bad server key\n");
+        return 1;
+    }
 
     lfd = socket(AF_INET, SOCK_STREAM, 0);
     setsockopt(lfd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));

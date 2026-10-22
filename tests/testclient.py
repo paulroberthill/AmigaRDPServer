@@ -888,7 +888,7 @@ def run(args):
     c.mouse_slowpath(0x1000, 320, 270)
     c.key_fastpath(0x1e)
     c.key_fastpath(0x1e, release=True)
-    c.pump(1.0)
+    c.pump(5.0 if args.files else 1.0)          # 68k under vamos is slow
     p = c.pixel(320, 270)
     checks.append(("click painted an orange dot (got %r)" % (p,), p[0] > 200 and 100 < p[1] < 170 and p[2] < 60))
 
@@ -911,7 +911,7 @@ def run(args):
     # right click: the test host answers with a beep (Play Sound PDU)
     c.mouse_slowpath(0x8000 | 0x2000, 400, 300)
     c.mouse_slowpath(0x2000, 400, 300)
-    c.pump(1.0)
+    c.pump(5.0 if args.files else 1.0)
     beeps = c.stats.get("beeps", [])
     checks.append(("beep arrived as Play Sound PDU (%s)" % beeps, beeps == [(150, 880)]))
 

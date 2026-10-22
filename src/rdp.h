@@ -85,6 +85,18 @@ typedef struct {
 
 typedef struct rdp_session rdp_session;
 
+/*
+ * Server key (needed before the first session): a 512-bit RSA key,
+ * little-endian, and its public exponent. The signed certificate sent to
+ * clients is built from it. Returns 0, or -1 for an unusable key.
+ */
+int rdp_set_server_key(const uint8_t modulus[64], const uint8_t privexp[64], uint32_t e);
+
+/* Generate a new key (e = 65537) from the given random source, e.g. once
+ * per install, saving it for later runs. Returns 0 or -1. */
+int rdp_generate_server_key(uint8_t modulus[64], uint8_t privexp[64], uint32_t *e,
+                            void (*random)(void *ctx, uint8_t *out, size_t len), void *ctx);
+
 rdp_session *rdp_session_new(const rdp_config *cfg, const rdp_callbacks *cb);
 void rdp_session_free(rdp_session *s);
 

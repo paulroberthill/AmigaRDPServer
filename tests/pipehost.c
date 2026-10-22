@@ -5,6 +5,11 @@
  *
  *   pipehost IN OUT [bpp] [wire] [pw=PASSWORD]
  *
+ * Built with HAVE_HOSTKEY it uses the build's key (src/posix/hostkey.c);
+ * otherwise it generates one at startup. (Generation is slow as emulated
+ * 68k code, so the vamos run uses the build key too; tests/test_keygen.c
+ * covers generation on 68k.)
+ *
  * The client appends client->server bytes to IN; this program appends
  * server->client bytes to OUT. Each side polls the other's file for more
  * data, like `tail -f`. With "wire", the
@@ -25,6 +30,9 @@
 
 #include "../src/rdp.h"
 #include "../src/testpattern.h"
+#ifdef HAVE_HOSTKEY
+#include "../src/posix/hostkey.h"
+#endif
 
 #ifdef __amigaos__
 unsigned long __stack = 65536;          /* honoured by libnix */
@@ -36,6 +44,7 @@ unsigned long __stack = 65536;          /* honoured by libnix */
 
 static uint8_t *wire_fb;
 static int wire_bpp;
+static unsigned long wire_gen = (unsigned long)-1;  /* pattern generation in wire_fb */
 
 #ifdef __amigaos__
 /* vamos only flushes regular-file writes on DOS Flush(), so use DOS. */
@@ -118,6 +127,12 @@ static void to_wire(void)
     const uint8_t *src = tp_fb(), *pal = tp_palette();
     int bpp = (wire_bpp + 7) / 8, i;
 
+    /* converting the whole frame is slow as emulated 68k code: only do it
+     * when the pattern has changed */
+    if (tp_generation() == wire_gen)
+        return;
+    wire_gen = tp_generation();
+
     for (i = 0; i < tp_width() * tp_height(); i++) {
         const uint8_t *c = pal + src[i] * 3;
         uint8_t *d = wire_fb + (size_t)i * bpp;
@@ -168,6 +183,20 @@ int main(int argc, char **argv)
         cfg.fb_wire = 1;
     }
 
+#ifdef HAVE_HOSTKEY
+    if (rdp_set_server_key(host_key_modulus, host_key_privexp, host_key_exponent))
+        return 1;
+#else
+    {
+        uint8_t n[64], d[64];
+        uint32_t e;
+        if (rdp_generate_server_key(n, d, &e, p_random, NULL) || rdp_set_server_key(n, d, e)) {
+            fprintf(stderr, "key generation failed\n");
+            return 1;
+        }
+        printf("pipehost: generated a server key\n");
+    }
+#endif
     if (open_files(argv[1], argv[2])) {
         fprintf(stderr, "cannot open %s / %s\n", argv[1], argv[2]);
         return 1;
@@ -189,6 +218,7 @@ int main(int argc, char **argv)
         if (tp_resize_requested(&nw, &nh)) {
             if (tp_resize(nw, nh))
                 break;
+            wire_gen = (unsigned long)-1;
             if (wire_fb)
                 to_wire();
             if (rdp_session_resize(s, nw, nh, wire_fb ? wire_fb : tp_fb(), 0))
