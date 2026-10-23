@@ -1187,6 +1187,7 @@ int main(void)
     int newkey;
     struct RDArgs *rda, *src = NULL;
     char *line = NULL;
+    const char *pw_from;
     LONG lfd = -1;
     struct sockaddr_in addr;
     LONG one = 1;
@@ -1216,6 +1217,7 @@ int main(void)
     if (opt.scan < 1) opt.scan = 1;
     if (opt.scan > 16) opt.scan = 16;
     newkey = args[11] != 0;
+    pw_from = args[5] ? (src ? "the PASSWORD tool type" : "PASSWORD=") : "ENV:RDPServer/Password";
     if (args[5])
         strncpy(opt.password, (const char *)args[5], sizeof(opt.password) - 1);
     else if (!args[6] &&
@@ -1231,6 +1233,9 @@ int main(void)
     }
     if (args[6])
         opt.password[0] = 0;
+    if (opt.verbose && opt.password[0])     /* where it came from, not what it is */
+        printf("Password: %lu characters, from %s%s\n", (unsigned long)strlen(opt.password), pw_from,
+               strpbrk(opt.password, "\" \t") ? " (contains a space or quote)" : "");
     if (opt.bpp != 15 && opt.bpp != 16 && opt.bpp != 24 && opt.bpp != 32) {
         printf("BPP must be 15, 16, 24 or 32\n");
         return RETURN_FAIL;
