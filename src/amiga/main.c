@@ -88,7 +88,7 @@ unsigned long __stack = 65536;          /* honoured by libnix */
 struct Library *SocketBase;
 struct Library *RdpCyberGfxBase;
 
-static const char version[] __attribute__((used)) = "$VER: RDPServer 1.2 (23.10.2026)";
+static const char version[] __attribute__((used)) = "$VER: RDPServer 1.2.1 (23.10.2026)";
 
 #define TILE 64
 
