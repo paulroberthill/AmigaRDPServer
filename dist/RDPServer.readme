@@ -24,7 +24,8 @@ REQUIREMENTS
 
 QUICK START
 
-Copy RDPServer to C: (or anywhere), then from a Shell:
+Copy the RDPServer drawer anywhere (or just the program to C:), then from
+a Shell:
 
     RDPServer PASSWORD=secret
 
@@ -36,6 +37,10 @@ On Windows, run "mstsc /v:<amiga-ip-address>". If a warning says the
 identity of the remote computer cannot be verified, click Connect. Enter the
 password at the Amiga's login prompt, or save it in mstsc's credentials to
 skip the prompt. Press Ctrl-C in the Amiga Shell to stop the server.
+
+You can also start it by double-clicking its icon. It then uses the default
+options and the password from ENV:RDPServer/Password (see below), and shows
+its messages in a window. Press Ctrl-C in that window to stop it.
 
 
 OPTIONS

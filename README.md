@@ -30,6 +30,10 @@ of the remote computer cannot be verified, click Connect. Enter the password
 at the Amiga's login prompt, or save it in mstsc's credentials to skip the
 prompt. Press Ctrl-C in the Amiga Shell to stop the server.
 
+You can also start it by double-clicking its icon. It then uses the default
+options and the password from `ENV:RDPServer/Password` (see below), and shows
+its messages in a window. Press Ctrl-C in that window to stop it.
+
 ## Options
 
     RDPServer [PASSWORD=pw | NOPASSWORD] [PORT=n] [BPP=15|16|24|32]
@@ -144,7 +148,7 @@ keyboard input. Options: `-n` (no password), `-p port`, `-b 8|15|16|24|32`,
 | `src/amiga/ftxt.c` | IFF FTXT for the Amiga clipboard. |
 | `src/amiga/beep.c` | `DisplayBeep()` patch. |
 | `src/posix/main.c`, `src/testpattern.c` | Linux host and its test pattern. |
-| `dist/`, `tools/mkicon.py` | Aminet readme template, and the generator for the release's drawer icon. |
+| `dist/`, `tools/mkicon.py` | Aminet readme template, and the generator for the release's icons. |
 | `tests/` | Unit tests, test hosts and the test client. |
 
 ## Licence

@@ -1,19 +1,45 @@
 #!/usr/bin/env python3
-"""Write the RDPServer drawer icon (a Workbench .info file).
+"""Write the Workbench icons (.info files) for the release archive.
 
-Usage: mkicon.py OUTPUT.info
+Usage: mkicon.py RELEASE_DIR
 
-A classic 4-colour (2-plane) drawer icon, readable by Workbench 2.0 and later.
-The drawer opens showing all files, since the files inside have no icons.
+Writes, under RELEASE_DIR:
+  RDPServer.info                    drawer icon (opens showing all files)
+  RDPServer/RDPServer.info          tool icon for the program
+  RDPServer/RDPServer.readme.info   project icon, opened with MultiView
+
+Classic 4-colour (2-plane) icons, readable by Workbench 2.0 and later.
 Struct layouts follow workbench/workbench.h and intuition/intuition.h.
 """
+import os
 import struct
 import sys
 
 # Workbench palette: 0 = grey (background), 1 = black, 2 = white, 3 = blue.
+DRAWER_ART = """
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk
+kw.......................................k
+kw..kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk..k
+kw..kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk..k
+kw..kw................................k..k
+kw..kw................................k..k
+kw..kw...........kkkkkkkkkk...........k..k
+kw..kw...........kbbbbbbbbk...........k..k
+kw..kw...........kkkkkkkkkk...........k..k
+kw..kw................................k..k
+kw..kw................................k..k
+kw..kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk..k
+kw.......................................k
+kw.......................................k
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+.kk....................................kk.
+.kk....................................kk.
+"""
+
 # A monitor showing a Workbench screen with a window, and a two-way arrow
 # below it for "remote".
-ART = """
+TOOL_ART = """
 ....kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk...
 ....kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk...
 ....kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk...
@@ -45,12 +71,38 @@ ART = """
 .......kk..........................kk.......
 """
 
+# A page of text with a folded corner.
+README_ART = """
+..kkkkkkkkkkkkkkkkkkkkkk.......
+..kwwwwwwwwwwwwwwwwwwwwkk......
+..kwwwwwwwwwwwwwwwwwwwwk.k.....
+..kwwbbbbbbbbbbbbwwwwwwk..k....
+..kwwbbbbbbbbbbbbwwwwwwkkkkk...
+..kwwwwwwwwwwwwwwwwwwwwwwwwk...
+..kwwkkkkkkkkkkkkkkkkkkkkwwk...
+..kwwwwwwwwwwwwwwwwwwwwwwwwk...
+..kwwkkkkkkkkkkkkkkkkkkwwwwk...
+..kwwwwwwwwwwwwwwwwwwwwwwwwk...
+..kwwkkkkkkkkkkkkkkkkkkkkwwk...
+..kwwwwwwwwwwwwwwwwwwwwwwwwk...
+..kwwkkkkkkkkkkkkkkwwwwwwwwk...
+..kwwwwwwwwwwwwwwwwwwwwwwwwk...
+..kwwkkkkkkkkkkkkkkkkkkkkwwk...
+..kwwwwwwwwwwwwwwwwwwwwwwwwk...
+..kwwkkkkkkkkkkkkkkkkkkkkwwk...
+..kwwwwwwwwwwwwwwwwwwwwwwwwk...
+..kwwkkkkkkkkkkkkkkkkwwwwwwk...
+..kwwwwwwwwwwwwwwwwwwwwwwwwk...
+..kwwwwwwwwwwwwwwwwwwwwwwwwk...
+..kkkkkkkkkkkkkkkkkkkkkkkkkk...
+"""
+
 PEN = {'.': 0, 'k': 1, 'w': 2, 'b': 3}
 
 WB_DISKMAGIC = 0xE310
 WB_DISKVERSION = 1
 WB_DISKREVISION = 1
-WBDRAWER = 2
+WBTOOL, WBDRAWER, WBPROJECT = 3, 2, 4
 NO_ICON_POSITION = 0x80000000
 GFLG_GADGIMAGE_BACKFILL = 0x0005   # GFLG_GADGIMAGE | GFLG_GADGBACKFILL
 GACT_RELVERIFY_IMMEDIATE = 0x0003
@@ -76,10 +128,12 @@ def planes(rows):
     return bytes(out)
 
 
-def main(path):
-    rows = ART.strip('\n').split('\n')
+def icon(art, objtype, default_tool=None, stack=0):
+    """The bytes of a .info file with one image and no tool types."""
+    rows = art.strip('\n').split('\n')
     width, height = len(rows[0]), len(rows)
     assert all(len(r) == width for r in rows), 'ragged icon art'
+    drawer = objtype == WBDRAWER
 
     gadget = struct.pack('>IhhhhHHHIIIiIHI',
                          0,                     # NextGadget
@@ -90,38 +144,55 @@ def main(path):
                          0, 0, 0, 0,            # SelectRender, GadgetText, MutualExclude, SpecialInfo
                          0,                     # GadgetID
                          WB_DISKREVISION)       # UserData: icon revision
-    diskobj = struct.pack('>HH', WB_DISKMAGIC, WB_DISKVERSION) + gadget + \
+    out = struct.pack('>HH', WB_DISKMAGIC, WB_DISKVERSION) + gadget + \
         struct.pack('>BBIIIIIIi',
-                    WBDRAWER, 0,
-                    0, 0,                       # DefaultTool, ToolTypes
+                    objtype, 0,
+                    1 if default_tool else 0,   # DefaultTool follows
+                    0,                          # ToolTypes
                     NO_ICON_POSITION, NO_ICON_POSITION,
-                    1,                          # DrawerData follows
-                    0, 0)                       # ToolWindow, StackSize
-    assert len(diskobj) == 78
+                    1 if drawer else 0,         # DrawerData follows
+                    0,                          # ToolWindow
+                    stack)
+    assert len(out) == 78
 
-    # OldDrawerData: the drawer window's NewWindow, then dd_CurrentX/Y
-    newwindow = struct.pack('>hhhhBBIIIIIIIhhHHH',
-                            50, 30, 400, 120,   # LeftEdge, TopEdge, Width, Height
-                            0xff, 0xff,         # DetailPen, BlockPen
-                            0, 0,               # IDCMPFlags, Flags
-                            0, 0, 0, 0, 0,      # FirstGadget, CheckMark, Title, Screen, BitMap
-                            90, 40, 0xffff, 0xffff,
-                            WBENCHSCREEN)
-    olddrawer = newwindow + struct.pack('>ii', 0, 0)
-    assert len(olddrawer) == 56
+    if drawer:
+        # OldDrawerData: the drawer window's NewWindow, then dd_CurrentX/Y
+        out += struct.pack('>hhhhBBIIIIIIIhhHHH',
+                           50, 30, 400, 120,    # LeftEdge, TopEdge, Width, Height
+                           0xff, 0xff,          # DetailPen, BlockPen
+                           0, 0,                # IDCMPFlags, Flags
+                           0, 0, 0, 0, 0,       # FirstGadget, CheckMark, Title, Screen, BitMap
+                           90, 40, 0xffff, 0xffff,
+                           WBENCHSCREEN)
+        out += struct.pack('>ii', 0, 0)
 
-    image = struct.pack('>hhhhhIBBI',
-                        0, 0, width, height, DEPTH,
-                        1,                      # ImageData follows
-                        (1 << DEPTH) - 1, 0,    # PlanePick, PlaneOnOff
-                        0)                      # NextImage
-    assert len(image) == 20
+    out += struct.pack('>hhhhhIBBI',
+                       0, 0, width, height, DEPTH,
+                       1,                       # ImageData follows
+                       (1 << DEPTH) - 1, 0,     # PlanePick, PlaneOnOff
+                       0)                       # NextImage
+    out += planes(rows)
 
-    # DrawerData's OS 2.0 fields, present because the revision is non-zero
-    drawer2 = struct.pack('>IH', DDFLAGS_SHOWALL, DDVM_BYICON)
+    if default_tool:
+        s = default_tool.encode('latin-1') + b'\0'
+        out += struct.pack('>I', len(s)) + s
 
-    with open(path, 'wb') as f:
-        f.write(diskobj + olddrawer + image + planes(rows) + drawer2)
+    if drawer:
+        # DrawerData's OS 2.0 fields, present because the revision is non-zero
+        out += struct.pack('>IH', DDFLAGS_SHOWALL, DDVM_BYICON)
+    return out
+
+
+def main(root):
+    icons = {
+        'RDPServer.info': icon(DRAWER_ART, WBDRAWER),
+        'RDPServer/RDPServer.info': icon(TOOL_ART, WBTOOL, stack=65536),
+        'RDPServer/RDPServer.readme.info':
+            icon(README_ART, WBPROJECT, default_tool='SYS:Utilities/MultiView', stack=8192),
+    }
+    for name, data in icons.items():
+        with open(os.path.join(root, name), 'wb') as f:
+            f.write(data)
 
 
 if __name__ == '__main__':

@@ -3,7 +3,7 @@
 #   make test       Linux: crypto tests + end-to-end test over TCP
 #   make test68k    68k code under vamos: crypto tests + end-to-end test over pipes
 #   make newkey     regenerate the server RSA key / certificate
-#   make release    Aminet archive build/RDPServer.lha (with drawer icon) and build/RDPServer.readme
+#   make release    Aminet archive build/RDPServer.lha (with icons) and build/RDPServer.readme
 
 CC      ?= cc
 CFLAGS  ?= -O2 -g
@@ -161,9 +161,10 @@ release: build/rdpserver dist/RDPServer.readme LICENSE tools/mkicon.py
 	sed 's/@VERSION@/$(VERSION)/' dist/RDPServer.readme > build/RDPServer.readme
 	cp build/RDPServer.readme build/release/RDPServer/RDPServer.readme
 	cp LICENSE build/release/RDPServer/LICENSE
-	python3 -I tools/mkicon.py build/release/RDPServer.info
+	python3 -I tools/mkicon.py build/release
 	cd build/release && lha -aqo5 ../RDPServer.lha RDPServer.info RDPServer RDPServer/RDPServer \
-	    RDPServer/RDPServer.readme RDPServer/LICENSE
+	    RDPServer/RDPServer.info RDPServer/RDPServer.readme RDPServer/RDPServer.readme.info \
+	    RDPServer/LICENSE
 	lha -v build/RDPServer.lha
 
 clean:
