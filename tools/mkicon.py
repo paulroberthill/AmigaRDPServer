@@ -5,7 +5,8 @@ Usage: mkicon.py RELEASE_DIR
 
 Writes, under RELEASE_DIR:
   RDPServer.info                    drawer icon (opens showing all files)
-  RDPServer/RDPServer.info          tool icon for the program
+  RDPServer/RDPServer.info          tool icon for the program, with its
+                                    options as disabled tool types
   RDPServer/RDPServer.readme.info   project icon, opened with MultiView
 
 Classic 4-colour (2-plane) icons, readable by Workbench 2.0 and later.
@@ -97,6 +98,13 @@ README_ART = """
 ..kkkkkkkkkkkkkkkkkkkkkkkkkk...
 """
 
+# The program's options, disabled (in parentheses) at their defaults, so
+# they are easy to find and switch on in the icon's Information window.
+TOOL_TYPES = [
+    '(PORT=3389)', '(BPP=16)', '(INTERVAL=100)', '(SCAN=4)', '(NOCOMPRESS)',
+    '(NOCLIPBOARD)', '(NOBEEP)', '(NEGFAIL)', '(VERBOSE)',
+]
+
 PEN = {'.': 0, 'k': 1, 'w': 2, 'b': 3}
 
 WB_DISKMAGIC = 0xE310
@@ -128,8 +136,8 @@ def planes(rows):
     return bytes(out)
 
 
-def icon(art, objtype, default_tool=None, stack=0):
-    """The bytes of a .info file with one image and no tool types."""
+def icon(art, objtype, default_tool=None, stack=0, tooltypes=()):
+    """The bytes of a .info file with one image."""
     rows = art.strip('\n').split('\n')
     width, height = len(rows[0]), len(rows)
     assert all(len(r) == width for r in rows), 'ragged icon art'
@@ -148,7 +156,7 @@ def icon(art, objtype, default_tool=None, stack=0):
         struct.pack('>BBIIIIIIi',
                     objtype, 0,
                     1 if default_tool else 0,   # DefaultTool follows
-                    0,                          # ToolTypes
+                    1 if tooltypes else 0,      # ToolTypes follow
                     NO_ICON_POSITION, NO_ICON_POSITION,
                     1 if drawer else 0,         # DrawerData follows
                     0,                          # ToolWindow
@@ -173,9 +181,17 @@ def icon(art, objtype, default_tool=None, stack=0):
                        0)                       # NextImage
     out += planes(rows)
 
+    def string(text):
+        b = text.encode('latin-1') + b'\0'
+        return struct.pack('>I', len(b)) + b
+
     if default_tool:
-        s = default_tool.encode('latin-1') + b'\0'
-        out += struct.pack('>I', len(s)) + s
+        out += string(default_tool)
+    if tooltypes:
+        # the size of the NULL-terminated pointer array, then the strings
+        out += struct.pack('>I', 4 * (len(tooltypes) + 1))
+        for t in tooltypes:
+            out += string(t)
 
     if drawer:
         # DrawerData's OS 2.0 fields, present because the revision is non-zero
@@ -186,7 +202,7 @@ def icon(art, objtype, default_tool=None, stack=0):
 def main(root):
     icons = {
         'RDPServer.info': icon(DRAWER_ART, WBDRAWER),
-        'RDPServer/RDPServer.info': icon(TOOL_ART, WBTOOL, stack=65536),
+        'RDPServer/RDPServer.info': icon(TOOL_ART, WBTOOL, stack=65536, tooltypes=TOOL_TYPES),
         'RDPServer/RDPServer.readme.info':
             icon(README_ART, WBPROJECT, default_tool='SYS:Utilities/MultiView', stack=8192),
     }

@@ -30,11 +30,17 @@ of the remote computer cannot be verified, click Connect. Enter the password
 at the Amiga's login prompt, or save it in mstsc's credentials to skip the
 prompt. Press Ctrl-C in the Amiga Shell to stop the server.
 
-You can also start it by double-clicking its icon. It then uses the default
-options and the password from `ENV:RDPServer/Password` (see below), and shows
-its messages in a window. Press Ctrl-C in that window to stop it.
+You can also start it by double-clicking its icon. Its messages then appear
+in a window; press Ctrl-C in that window to stop it. Set options as tool
+types in the icon (select it, then Icons > Information). The icon lists them
+in parentheses, which turns them off; remove the parentheses to use one.
+They take the same form as Shell arguments, such as `PORT=3390` or `NOBEEP`.
+`PASSWORD=` works too, but it is stored as plain text in the icon, so prefer
+`ENV:RDPServer/Password` (see below).
 
 ## Options
+
+These are Shell arguments, or tool types when started from Workbench.
 
     RDPServer [PASSWORD=pw | NOPASSWORD] [PORT=n] [BPP=15|16|24|32]
               [INTERVAL=ms] [SCAN=n] [NOCOMPRESS] [NOCLIPBOARD] [NOBEEP]
@@ -145,6 +151,7 @@ keyboard input. Options: `-n` (no password), `-p port`, `-b 8|15|16|24|32`,
 | `src/login.c` | Login prompt. |
 | `src/amiga/main.c`, `src/amiga/keymap.h` | Amiga host: sockets, screen capture, input. |
 | `src/amiga/scan.c` | Screen change detection. |
+| `src/amiga/tooltypes.c` | Workbench tool types as `ReadArgs()` input. |
 | `src/amiga/ftxt.c` | IFF FTXT for the Amiga clipboard. |
 | `src/amiga/beep.c` | `DisplayBeep()` patch. |
 | `src/posix/main.c`, `src/testpattern.c` | Linux host and its test pattern. |

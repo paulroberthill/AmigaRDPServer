@@ -46,8 +46,8 @@ build/%-060.o: src/%.c src/crypto.h src/keygen.h src/mul32.h | build
 	$(AMIGA_CC) $(AMIGA_CFLAGS_060) -Drsa_modexp_le=rsa_modexp_le_060 \
 	    -Drsa512_generate=rsa512_generate_060 -c -o $@ $<
 
-AMIGA_SRC = src/amiga/main.c src/amiga/ftxt.c src/amiga/beep.c src/amiga/scan.c
-build/rdpserver: $(AMIGA_CORE) $(RSA_OBJS) $(AMIGA_SRC) src/amiga/keymap.h src/amiga/ftxt.h src/amiga/beep.h src/amiga/scan.h $(HDRS) | build
+AMIGA_SRC = src/amiga/main.c src/amiga/ftxt.c src/amiga/beep.c src/amiga/scan.c src/amiga/tooltypes.c
+build/rdpserver: $(AMIGA_CORE) $(RSA_OBJS) $(AMIGA_SRC) src/amiga/keymap.h src/amiga/ftxt.h src/amiga/beep.h src/amiga/scan.h src/amiga/tooltypes.h $(HDRS) | build
 	$(AMIGA_CC) $(AMIGA_CFLAGS) -o $@ $(AMIGA_CORE) $(RSA_OBJS) $(AMIGA_SRC)
 
 # Generated once per checkout so every checkout has its own key.
@@ -95,6 +95,12 @@ build/test_scan: tests/test_scan.c src/amiga/scan.c src/amiga/scan.h | build
 build/test_scan.68k: tests/test_scan.c src/amiga/scan.c src/amiga/scan.h | build
 	$(AMIGA_CC) $(AMIGA_CFLAGS) -o $@ tests/test_scan.c src/amiga/scan.c
 
+build/test_tooltypes: tests/test_tooltypes.c src/amiga/tooltypes.c src/amiga/tooltypes.h | build
+	$(CC) $(CFLAGS) -o $@ tests/test_tooltypes.c src/amiga/tooltypes.c
+
+build/test_tooltypes.68k: tests/test_tooltypes.c src/amiga/tooltypes.c src/amiga/tooltypes.h | build
+	$(AMIGA_CC) $(AMIGA_CFLAGS) -o $@ tests/test_tooltypes.c src/amiga/tooltypes.c
+
 build/test_keygen: tests/test_keygen.c src/keygen.c src/keygen.h src/bignum.c src/mul32.h | build
 	$(CC) $(CFLAGS) -o $@ tests/test_keygen.c src/keygen.c src/bignum.c
 
@@ -110,11 +116,12 @@ build/test_rle: tests/test_rle.c src/rle.c src/rle.h | build
 build/test_rle.68k: tests/test_rle.c src/rle.c src/rle.h | build
 	$(AMIGA_CC) $(AMIGA_CFLAGS) -o $@ tests/test_rle.c src/rle.c
 
-test: test_crypto build/test_rle build/test_ftxt build/test_scan build/test_keygen rdpserver
+test: test_crypto build/test_rle build/test_ftxt build/test_scan build/test_tooltypes build/test_keygen rdpserver
 	./test_crypto
 	python3 -I tests/test_keygen.py build/test_keygen 10
 	build/test_ftxt
 	build/test_scan
+	build/test_tooltypes
 	python3 -I tests/test_rle.py build/test_rle
 	@echo "== saved credentials (password in Client Info), full suite"
 	python3 -I tests/testclient.py --password 'Amiga-1200!' --spawn ./rdpserver -P 'Amiga-1200!'
@@ -126,7 +133,7 @@ test: test_crypto build/test_rle build/test_ftxt build/test_scan build/test_keyg
 	python3 -I tests/testclient.py --flood 0 --spawn ./rdpserver -n -k
 
 # vamos: python3 -m venv .venv && .venv/bin/pip install amitools==0.8.1 machine68k==0.3.0
-test68k: build/test_crypto.68k build/test_crypto-060.68k build/test_rle.68k build/test_ftxt.68k build/test_beep.68k build/test_scan.68k build/pipehost.68k
+test68k: build/test_crypto.68k build/test_crypto-060.68k build/test_rle.68k build/test_ftxt.68k build/test_beep.68k build/test_scan.68k build/test_tooltypes.68k build/pipehost.68k
 	rm -rf build/vamos-vols
 	$(VAMOS) -C 68020 build/test_crypto.68k
 	rm -rf build/vamos-vols
@@ -139,6 +146,8 @@ test68k: build/test_crypto.68k build/test_crypto-060.68k build/test_rle.68k buil
 	$(VAMOS) -q -C 68020 build/test_beep.68k
 	rm -rf build/vamos-vols
 	$(VAMOS) -q -C 68020 -m 8192 build/test_scan.68k
+	rm -rf build/vamos-vols
+	$(VAMOS) -q -C 68020 build/test_tooltypes.68k
 	rm -rf build/vamos-vols
 	python3 -I tests/testclient.py --files build/pipe --password secret \
 	    --spawn $(VAMOS) -q -C 68020 -m 8192 \

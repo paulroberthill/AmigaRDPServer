@@ -10,6 +10,8 @@
  *             [INTERVAL=ms] [SCAN=n] [NOCOMPRESS] [NOCLIPBOARD] [NOBEEP]
  *             [NEWKEY] [NEGFAIL] [VERBOSE]
  *
+ * From Workbench the same options are read from the icon's tool types.
+ *
  * Server key: each install has its own RSA key, generated on the first run
  * (seconds to minutes, depending on the CPU) and kept in
  * ENVARC:RDPServer/ServerKey; no key is compiled into the binary. NEWKEY
@@ -50,6 +52,8 @@
 #include <intuition/intuitionbase.h>
 #include <intuition/screens.h>
 #include <cybergraphx/cybergraphics.h>
+#include <workbench/startup.h>
+#include <workbench/workbench.h>
 
 /* "CyberGfxBase" would be auto-opened by the startup code as the
  * non-existent CyberGfx.library, so use another name. */
@@ -60,6 +64,7 @@
 #include <proto/graphics.h>
 #include <proto/intuition.h>
 #include <proto/cybergraphics.h>
+#include <proto/icon.h>
 #include <proto/bsdsocket.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -74,6 +79,7 @@
 #include "beep.h"
 #include "ftxt.h"
 #include "scan.h"
+#include "tooltypes.h"
 #include "keymap.h"
 
 unsigned long __stack = 65536;          /* honoured by libnix */
@@ -1128,22 +1134,74 @@ static int serve(LONG fd)
     return quit;
 }
 
+/* ------------------------------------------------------------------ */
+/* Workbench start                                                    */
+/* ------------------------------------------------------------------ */
+
+extern struct WBStartup *_WBenchMsg;    /* set by libnix when started from Workbench */
+
+/*
+ * Started from Workbench: the program icon's tool types, as a ReadArgs()
+ * source (see tooltypes.c), so they are checked like Shell arguments.
+ * Returns NULL if out of memory; free with wb_args_free().
+ */
+static struct RDArgs *wb_args(char **line)
+{
+    static const char *const none[] = { NULL };
+    struct WBArg *arg = _WBenchMsg->sm_ArgList;     /* the program's own icon */
+    struct DiskObject *dob;
+    struct RDArgs *src;
+    BPTR old;
+
+    old = CurrentDir(arg->wa_Lock);
+    dob = GetDiskObject(arg->wa_Name);
+    CurrentDir(old);
+    *line = tooltypes_to_args(RDPSERVER_TEMPLATE, dob && dob->do_ToolTypes ?
+                              (const char *const *)dob->do_ToolTypes : none);
+    if (dob)
+        FreeDiskObject(dob);
+    src = AllocDosObject(DOS_RDARGS, NULL);
+    if (!*line || !src) {
+        free(*line);
+        if (src)
+            FreeDosObject(DOS_RDARGS, src);
+        return NULL;
+    }
+    src->RDA_Source.CS_Buffer = (UBYTE *)*line;
+    src->RDA_Source.CS_Length = strlen(*line);
+    src->RDA_Source.CS_CurChr = 0;
+    src->RDA_Flags |= RDAF_NOPROMPT;
+    return src;
+}
+
+static void wb_args_free(struct RDArgs *src, char *line)
+{
+    if (src)
+        FreeDosObject(DOS_RDARGS, src);
+    free(line);
+}
+
 int main(void)
 {
-    static const char template[] =
-        "PORT/K/N,BPP/K/N,INTERVAL/K/N,NEGFAIL/S,VERBOSE/S,PASSWORD/K,NOPASSWORD/S,NOCOMPRESS/S,"
-        "NOCLIPBOARD/S,NOBEEP/S,SCAN/K/N,NEWKEY/S";
     LONG args[12] = { 0 };
     int newkey;
-    struct RDArgs *rda;
+    struct RDArgs *rda, *src = NULL;
+    char *line = NULL;
     LONG lfd = -1;
     struct sockaddr_in addr;
     LONG one = 1;
     int rc = RETURN_FAIL;
 
-    rda = ReadArgs((STRPTR)template, args, NULL);
+    if (_WBenchMsg && !(src = wb_args(&line))) {
+        printf("RDPServer: out of memory\n");
+        return RETURN_FAIL;
+    }
+    rda = ReadArgs((STRPTR)RDPSERVER_TEMPLATE, args, src);
     if (!rda) {
-        PrintFault(IoErr(), (STRPTR)"RDPServer");
+        char msg[100];
+        Fault(IoErr(), (STRPTR)(src ? "RDPServer tool types" : "RDPServer"), (STRPTR)msg, sizeof(msg));
+        printf("%s\n", msg);
+        wb_args_free(src, line);
         return RETURN_FAIL;
     }
     if (args[0]) opt.port = *(LONG *)args[0];
@@ -1165,6 +1223,7 @@ int main(void)
                     sizeof(opt.password), GVF_GLOBAL_ONLY) < 0)
         opt.password[0] = 0;
     FreeArgs(rda);
+    wb_args_free(src, line);
     if (!opt.password[0] && !args[6]) {
         printf("No password: give PASSWORD=..., put one in ENV:RDPServer/Password,\n"
                "or use NOPASSWORD to let anyone who can connect control this Amiga.\n");
