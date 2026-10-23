@@ -8,6 +8,11 @@
  * use the codes AmigaOS 3.5+ PC-keyboard drivers use (Insert 0x47,
  * PgUp 0x48, PgDn 0x49, F11 0x4B, PrtScr 0x6D, Pause 0x6E, F12 0x6F,
  * Home 0x70, End 0x71). 0xFF = not mapped.
+ *
+ * Right Ctrl is the Right Amiga key, for Amiga shortcuts such as RAmiga-C
+ * (copy): mstsc keeps Windows-key combinations for Windows itself unless it
+ * is full screen. Left Ctrl stays Ctrl. The Windows keys are also the Amiga
+ * keys.
  */
 #ifndef RDP_AMIGA_KEYMAP_H
 #define RDP_AMIGA_KEYMAP_H
@@ -38,7 +43,7 @@ static const unsigned char pc_ext_to_amiga[128] = {
     /* 0x00 */ RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE,
     /* 0x08 */ RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE,
     /* 0x10 */ RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE,
-    /* 0x18 */ RK_NONE, RK_NONE, RK_NONE, RK_NONE, 0x43, 0x63, RK_NONE, RK_NONE,      /* KP Enter, RCtrl */
+    /* 0x18 */ RK_NONE, RK_NONE, RK_NONE, RK_NONE, 0x43, 0x67, RK_NONE, RK_NONE,      /* KP Enter, RCtrl = RAmiga */
     /* 0x20 */ RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE,
     /* 0x28 */ RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE,
     /* 0x30 */ RK_NONE, RK_NONE, RK_NONE, RK_NONE, RK_NONE, 0x5c, RK_NONE, 0x6d,      /* KP/, PrtScr */

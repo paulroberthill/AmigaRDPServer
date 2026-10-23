@@ -74,6 +74,8 @@ server will not start without a password unless you give `NOPASSWORD`.
   size resizes the client's window to match.
 - **Input:** the mouse (including the wheel, as NewMouse events) and keyboard
   are passed to input.device. Keys are mapped by position from a PC keyboard.
+  The right Ctrl key is the Right Amiga key, so right Ctrl-C copies and right
+  Ctrl-V pastes in Amiga programs. Left Ctrl stays Ctrl.
 - **Clipboard:** text copied on either side can be pasted on the other, up to
   512 KB. Characters that Latin-1 can't hold become their nearest ASCII
   equivalent or `?`. In mstsc this is the Clipboard option under Local
