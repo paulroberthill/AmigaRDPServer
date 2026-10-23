@@ -15,8 +15,9 @@
  * Build a ReadArgs() command line (ending in "\n") from the NULL-terminated
  * tool type array `types`. Only tool types naming a keyword of `template`
  * are used, so other ones, and ones disabled Workbench-style with
- * parentheses, are ignored. Keyword matching ignores case. Values are
- * quoted; a switch (/S) keyword is passed without its value.
+ * parentheses, are ignored. Keyword matching ignores case. Spaces and tabs
+ * around the keyword and the value are ignored, as the Shell would; values
+ * are then quoted. A switch (/S) keyword is passed without its value.
  * Returns a malloc()ed string, or NULL if out of memory.
  */
 char *tooltypes_to_args(const char *template, const char *const *types);

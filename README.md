@@ -34,7 +34,8 @@ You can also start it by double-clicking its icon. Its messages then appear
 in a window; press Ctrl-C in that window to stop it. Set options as tool
 types in the icon (select it, then Icons > Information). The icon lists them
 in parentheses, which turns them off; remove the parentheses to use one.
-They take the same form as Shell arguments, such as `PORT=3390` or `NOBEEP`.
+They take the same form as Shell arguments, such as `PORT=3390` or `NOBEEP`;
+spaces before and after a value are ignored.
 `PASSWORD=` works too, but it is stored as plain text in the icon, so prefer
 `ENV:RDPServer/Password` (see below).
 

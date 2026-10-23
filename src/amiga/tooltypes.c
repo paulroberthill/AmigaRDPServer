@@ -8,6 +8,11 @@ static int lower(int c)
     return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c;
 }
 
+static int space(int c)
+{
+    return c == ' ' || c == '\t';
+}
+
 /*
  * Is key[0..len) a keyword of the template? *sw is set if it is a switch.
  * Template entries look like "NAME/K/N", separated by commas.
@@ -52,10 +57,17 @@ char *tooltypes_to_args(const char *template, const char *const *types)
         return NULL;
 
     for (tt = types; *tt; tt++) {
-        const char *t = *tt, *eq = strchr(t, '=');
-        size_t len = eq ? (size_t)(eq - t) : strlen(t);
+        const char *t = *tt, *eq = strchr(t, '='), *end;
+        size_t len;
         int sw;
 
+        /* key and value without surrounding spaces, as the Shell would see them */
+        while (space(*t))
+            t++;
+        end = eq ? eq : t + strlen(t);
+        while (end > t && space(end[-1]))
+            end--;
+        len = (size_t)(end - t);
         if (!len || !keyword(template, t, len, &sw))
             continue;
         if (p != out)
@@ -63,10 +75,15 @@ char *tooltypes_to_args(const char *template, const char *const *types)
         memcpy(p, t, len);
         p += len;
         if (eq && !sw) {
-            const char *v;
+            const char *v = eq + 1;
+            while (space(*v))
+                v++;
+            end = v + strlen(v);
+            while (end > v && space(end[-1]))
+                end--;
             *p++ = '=';
             *p++ = '"';
-            for (v = eq + 1; *v; v++) {
+            for (; v < end; v++) {
                 if (*v == '"' || *v == '*') {
                     *p++ = '*';
                     *p++ = *v;

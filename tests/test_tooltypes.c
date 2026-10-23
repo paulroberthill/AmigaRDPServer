@@ -76,6 +76,10 @@ int main(void)
     static const char *const kase[] = { "port=1", "NoBeep", "Verbose=YES", NULL };
     static const char *const pw[] = { "PASSWORD=a b\"c*d", NULL };
     static const char *const empty[] = { "PASSWORD=", "INTERVAL", NULL };
+    static const char *const spaces[] = {
+        "PASSWORD=x ", " PORT = 3390\t", "NOBEEP ", "BPP=  ", "(SCAN=2) ", NULL
+    };
+    static const char *const inner[] = { "PASSWORD= a b ", NULL };
 
     conv("no tool types", none, "\n");
     conv("numbers and a switch", basic, "PORT=\"3390\" BPP=\"24\" NOBEEP\n");
@@ -83,6 +87,9 @@ int main(void)
     conv("keywords ignore case; switch value dropped", kase, "port=\"1\" NoBeep Verbose\n");
     conv("value with space, quote and star escaped", pw, "PASSWORD=\"a b*\"c**d\"\n");
     conv("empty value; keyword without value", empty, "PASSWORD=\"\" INTERVAL\n");
+    conv("spaces around keywords and values ignored", spaces,
+         "PASSWORD=\"x\" PORT=\"3390\" NOBEEP BPP=\"\"\n");
+    conv("spaces inside a value kept", inner, "PASSWORD=\"a b\"\n");
 
 #ifdef __amigaos__
     {
@@ -101,6 +108,12 @@ int main(void)
               !strcmp((const char *)a[5], "a b\"c*d"));
         free((void *)a[5]);
         check("ReadArgs: no tool types", !readargs(none, a) && !a[0] && !a[3] && !a[5]);
+        {
+            static const char *const trail[] = { "PASSWORD=x ", "PORT=3390 ", NULL };
+            check("ReadArgs: trailing spaces dropped", !readargs(trail, a) && a[5] &&
+                  !strcmp((const char *)a[5], "x") && a[0] && *(LONG *)a[0] == 3390);
+            free((void *)a[5]);
+        }
         check("ReadArgs: bad number rejected", readargs(bad_num, a) != 0);
     }
 #endif
