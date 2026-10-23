@@ -3,6 +3,7 @@
 #   make test       Linux: crypto tests + end-to-end test over TCP
 #   make test68k    68k code under vamos: crypto tests + end-to-end test over pipes
 #   make newkey     regenerate the server RSA key / certificate
+#   make release    Aminet archive build/RDPServer.lha and build/RDPServer.readme
 
 CC      ?= cc
 CFLAGS  ?= -O2 -g
@@ -150,7 +151,21 @@ test68k-keygen: build/test_keygen.68k build/test_keygen-060.68k
 	rm -rf build/vamos-vols
 	python3 -I tests/test_keygen.py $(VAMOS) -q -C 68020 build/test_keygen-060.68k 1
 
+# Aminet release: the version comes from the $$VER string in src/amiga/main.c
+VERSION = $(shell sed -n 's/.*\$$VER: RDPServer \([0-9.]*\) .*/\1/p' src/amiga/main.c)
+
+release: build/rdpserver dist/RDPServer.readme LICENSE
+	rm -rf build/release build/RDPServer.lha
+	mkdir -p build/release/RDPServer
+	/opt/amiga/bin/m68k-amigaos-strip -o build/release/RDPServer/RDPServer build/rdpserver
+	sed 's/@VERSION@/$(VERSION)/' dist/RDPServer.readme > build/RDPServer.readme
+	cp build/RDPServer.readme build/release/RDPServer/RDPServer.readme
+	cp LICENSE build/release/RDPServer/LICENSE
+	cd build/release && lha -aqo5 ../RDPServer.lha RDPServer RDPServer/RDPServer \
+	    RDPServer/RDPServer.readme RDPServer/LICENSE
+	lha -v build/RDPServer.lha
+
 clean:
 	rm -rf rdpserver test_crypto build
 
-.PHONY: all test test68k test68k-keygen clean newkey
+.PHONY: all test test68k test68k-keygen clean newkey release
