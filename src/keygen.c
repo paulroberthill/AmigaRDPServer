@@ -14,6 +14,7 @@
 #include <string.h>
 #include "crypto.h"
 #include "keygen.h"
+#include "mul32.h"
 
 #define PL 8                    /* limbs in a 256-bit prime */
 #define E  65537u
@@ -35,13 +36,24 @@ static void from_bytes(limb *x, const uint8_t *in, int k)
         x[i / 4] |= (limb)in[i] << (8 * (i % 4));
 }
 
+/* x mod m, m < 2^24 */
 static uint32_t mod_small(const limb *x, int k, uint32_t m)
 {
+#ifdef RSA_060
+    /* a byte at a time, so only 32-bit divides (see mul32.h) */
+    uint32_t r = 0;
+    int i, sh;
+    for (i = k - 1; i >= 0; i--)
+        for (sh = 24; sh >= 0; sh -= 8)
+            r = ((r << 8) | ((x[i] >> sh) & 0xff)) % m;
+    return r;
+#else
     uint64_t r = 0;
     int i;
     for (i = k - 1; i >= 0; i--)
         r = ((r << 32) | x[i]) % m;
     return (uint32_t)r;
+#endif
 }
 
 /* x == y ? */
@@ -58,7 +70,7 @@ static void mul(limb *out, const limb *a, const limb *b, int k)
     for (i = 0; i < k; i++) {
         uint64_t carry = 0;
         for (j = 0; j < k; j++) {
-            uint64_t t = (uint64_t)a[i] * b[j] + out[i + j] + carry;
+            uint64_t t = mul32x32(a[i], b[j]) + out[i + j] + carry;
             out[i + j] = (limb)t;
             carry = t >> 32;
         }
@@ -177,7 +189,7 @@ int rsa512_generate(uint8_t n_out[64], uint8_t d_out[64], uint32_t *e_out,
         k = (uint32_t)(((uint64_t)(E - 1) * inverse_small(rem, E)) % E);
         carry = 1;                      /* the + 1 */
         for (i = 0; i < 2 * PL + 1; i++) {
-            uint64_t t = (uint64_t)phi[i] * k + carry;
+            uint64_t t = mul32x32(phi[i], k) + carry;
             kphi[i] = (limb)t;
             carry = t >> 32;
         }

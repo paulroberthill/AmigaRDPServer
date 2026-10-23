@@ -8,6 +8,7 @@
  */
 #include <string.h>
 #include "crypto.h"
+#include "mul32.h"
 
 #define MAXLIMBS 64   /* 2048 bits */
 
@@ -26,7 +27,7 @@ static void mont_mul(limb *r, const limb *a, const limb *b, const limb *n,
     for (i = 0; i < k; i++) {
         acc = 0;
         for (j = 0; j < k; j++) {
-            acc = (dlimb)a[j] * b[i] + t[j] + (acc >> 32);
+            acc = mul32x32(a[j], b[i]) + t[j] + (acc >> 32);
             t[j] = (limb)acc;
         }
         acc = (dlimb)t[k] + (acc >> 32);
@@ -34,9 +35,9 @@ static void mont_mul(limb *r, const limb *a, const limb *b, const limb *n,
         t[k + 1] = (limb)(acc >> 32);
 
         m = t[0] * n0inv;
-        acc = (dlimb)m * n[0] + t[0];
+        acc = mul32x32(m, n[0]) + t[0];
         for (j = 1; j < k; j++) {
-            acc = (dlimb)m * n[j] + t[j] + (acc >> 32);
+            acc = mul32x32(m, n[j]) + t[j] + (acc >> 32);
             t[j - 1] = (limb)acc;
         }
         acc = (dlimb)t[k] + (acc >> 32);

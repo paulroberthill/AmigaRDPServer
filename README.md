@@ -150,8 +150,11 @@ the Amiga.
 
 ## Amiga host (`build/rdpserver`)
 
-It is built for a 68060 with Picasso96 and Roadshow. It was confirmed
-working on real hardware with Windows 10 mstsc on 2026-10-22 (version 0.9):
+One binary runs on any 68020, 68030, 68040 or 68060 (built with
+`-m68020-60`). The RSA code is included twice and picked at startup: the
+68060 copy avoids the 64-bit multiply and divide instructions that the 060
+lacks (see `src/amiga/cpu.c`). It needs Picasso96 and Roadshow. It was
+confirmed working on real hardware with Windows 10 mstsc on 2026-10-22 (version 0.9):
 the screen, input, password prompt, RLE compression, clipboard in both
 directions, beeps, resizing when switching screens, and faster sampled screen
 polling. Copy `build/rdpserver` to the Amiga and run it from a
@@ -160,9 +163,9 @@ Shell:
     RDPServer PASSWORD=secret [PORT=3389] [BPP=16] [INTERVAL=100] [SCAN=4] [NOCOMPRESS] [NOCLIPBOARD] [NOBEEP] [NEWKEY] [NEGFAIL] [VERBOSE]
 
 - **Server key:** each Amiga makes its own RSA key on the first run, which
-  takes a few seconds on a 060 because the 68060 has no 64-bit multiply. It
-  is saved in `ENVARC:RDPServer/ServerKey`, and the binary contains no key,
-  so a downloaded release is safe to share. Use `NEWKEY` to replace the key;
+  takes seconds to minutes depending on the CPU. It is saved in
+  `ENVARC:RDPServer/ServerKey`, and the binary contains no key, so a
+  downloaded release is safe to share. Use `NEWKEY` to replace the key;
   clients then see a different certificate, which mstsc does not check.
 - **Setting the password:** to keep it out of scripts, leave out `PASSWORD=`
   and put the password in `ENVARC:RDPServer/Password`. Copy it to `ENV:` (or

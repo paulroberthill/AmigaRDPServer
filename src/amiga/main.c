@@ -1,17 +1,19 @@
 /*
  * AmigaOS 3.x host for the RDP server.
  *
- * Target: 68060, Picasso96 (through its cybergraphics.library API), Roadshow
- * (bsdsocket.library). Native OCS/ECS/AGA screens work through a slower
- * ReadPixelArray8() fallback (no HAM).
+ * Target: 68020 to 68060 (one binary), Picasso96 (through its
+ * cybergraphics.library API), Roadshow (bsdsocket.library). Native
+ * OCS/ECS/AGA screens work through a slower ReadPixelArray8() fallback
+ * (no HAM).
  *
  *   RDPServer [PASSWORD=pw | NOPASSWORD] [PORT=n] [BPP=15|16|24|32]
  *             [INTERVAL=ms] [SCAN=n] [NOCOMPRESS] [NOCLIPBOARD] [NOBEEP]
  *             [NEWKEY] [NEGFAIL] [VERBOSE]
  *
  * Server key: each install has its own RSA key, generated on the first run
- * (a few seconds on a 68060) and kept in ENVARC:RDPServer/ServerKey; no key
- * is compiled into the binary. NEWKEY replaces it.
+ * (seconds to minutes, depending on the CPU) and kept in
+ * ENVARC:RDPServer/ServerKey; no key is compiled into the binary. NEWKEY
+ * replaces it.
  *
  * Without PASSWORD the password is read from ENV:RDPServer/Password; with
  * neither (and no NOPASSWORD) the server refuses to start. Clients see a
@@ -80,7 +82,7 @@ unsigned long __stack = 65536;          /* honoured by libnix */
 struct Library *SocketBase;
 struct Library *RdpCyberGfxBase;
 
-static const char version[] __attribute__((used)) = "$VER: RDPServer 1.0 (22.10.2026)";
+static const char version[] __attribute__((used)) = "$VER: RDPServer 1.1 (23.10.2026)";
 
 #define TILE 64
 
