@@ -3,7 +3,7 @@
 #   make test       Linux: crypto tests + end-to-end test over TCP
 #   make test68k    68k code under vamos: crypto tests + end-to-end test over pipes
 #   make newkey     regenerate the server RSA key / certificate
-#   make release    Aminet archive build/RDPServer.lha and build/RDPServer.readme
+#   make release    Aminet archive build/RDPServer.lha (with drawer icon) and build/RDPServer.readme
 
 CC      ?= cc
 CFLAGS  ?= -O2 -g
@@ -154,14 +154,15 @@ test68k-keygen: build/test_keygen.68k build/test_keygen-060.68k
 # Aminet release: the version comes from the $$VER string in src/amiga/main.c
 VERSION = $(shell sed -n 's/.*\$$VER: RDPServer \([0-9.]*\) .*/\1/p' src/amiga/main.c)
 
-release: build/rdpserver dist/RDPServer.readme LICENSE
+release: build/rdpserver dist/RDPServer.readme LICENSE tools/mkicon.py
 	rm -rf build/release build/RDPServer.lha
 	mkdir -p build/release/RDPServer
 	/opt/amiga/bin/m68k-amigaos-strip -o build/release/RDPServer/RDPServer build/rdpserver
 	sed 's/@VERSION@/$(VERSION)/' dist/RDPServer.readme > build/RDPServer.readme
 	cp build/RDPServer.readme build/release/RDPServer/RDPServer.readme
 	cp LICENSE build/release/RDPServer/LICENSE
-	cd build/release && lha -aqo5 ../RDPServer.lha RDPServer RDPServer/RDPServer \
+	python3 -I tools/mkicon.py build/release/RDPServer.info
+	cd build/release && lha -aqo5 ../RDPServer.lha RDPServer.info RDPServer RDPServer/RDPServer \
 	    RDPServer/RDPServer.readme RDPServer/LICENSE
 	lha -v build/RDPServer.lha
 

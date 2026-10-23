@@ -144,7 +144,7 @@ keyboard input. Options: `-n` (no password), `-p port`, `-b 8|15|16|24|32`,
 | `src/amiga/ftxt.c` | IFF FTXT for the Amiga clipboard. |
 | `src/amiga/beep.c` | `DisplayBeep()` patch. |
 | `src/posix/main.c`, `src/testpattern.c` | Linux host and its test pattern. |
-| `dist/` | Aminet readme template. |
+| `dist/`, `tools/mkicon.py` | Aminet readme template, and the generator for the release's drawer icon. |
 | `tests/` | Unit tests, test hosts and the test client. |
 
 ## Licence
