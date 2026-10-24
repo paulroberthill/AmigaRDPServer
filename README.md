@@ -119,7 +119,7 @@ Each installation makes its own server key; none is built into the program.
 The Amiga build uses bebbo's amiga-gcc in `/opt/amiga`. There is also a Linux
 host that serves a test pattern, for testing the protocol code.
 
-    make              # ./rdpserver (Linux) and build/rdpserver (Amiga)
+    make              # ./rdpserver (Linux) and build/RDPServer (Amiga)
     make test         # Linux: unit tests and end-to-end tests
     make test68k      # the same code as 68k, under vamos
     make test68k-keygen   # 68k key generation (slow)

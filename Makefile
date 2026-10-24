@@ -1,5 +1,5 @@
 # RDP server for AmigaOS 3.x, with a Linux prototype host.
-#   make            build ./rdpserver (Linux) and build/rdpserver (Amiga, 68020-68060)
+#   make            build ./rdpserver (Linux) and build/RDPServer (Amiga, 68020-68060)
 #   make test       Linux: crypto tests + end-to-end test over TCP
 #   make test68k    68k code under vamos: crypto tests + end-to-end test over pipes
 #   make newkey     regenerate the server RSA key / certificate
@@ -27,7 +27,7 @@ HDRS   = src/rdp.h src/cliprdr.h src/login.h src/rle.h src/sec.h src/crypto.h sr
 HOSTKEY = src/posix/hostkey.c
 TP     = src/testpattern.c src/testpattern.h src/font5x7.h
 
-all: rdpserver build/rdpserver
+all: rdpserver build/RDPServer
 
 rdpserver: $(CORE) $(TP) src/posix/main.c $(HOSTKEY) $(HDRS)
 	$(CC) $(CFLAGS) -o $@ $(CORE) src/testpattern.c src/posix/main.c $(HOSTKEY)
@@ -47,7 +47,7 @@ build/%-060.o: src/%.c src/crypto.h src/keygen.h src/mul32.h | build
 	    -Drsa512_generate=rsa512_generate_060 -c -o $@ $<
 
 AMIGA_SRC = src/amiga/main.c src/amiga/ftxt.c src/amiga/beep.c src/amiga/scan.c src/amiga/tooltypes.c
-build/rdpserver: $(AMIGA_CORE) $(RSA_OBJS) $(AMIGA_SRC) src/amiga/keymap.h src/amiga/ftxt.h src/amiga/beep.h src/amiga/scan.h src/amiga/tooltypes.h $(HDRS) | build
+build/RDPServer: $(AMIGA_CORE) $(RSA_OBJS) $(AMIGA_SRC) src/amiga/keymap.h src/amiga/ftxt.h src/amiga/beep.h src/amiga/scan.h src/amiga/tooltypes.h $(HDRS) | build
 	$(AMIGA_CC) $(AMIGA_CFLAGS) -o $@ $(AMIGA_CORE) $(RSA_OBJS) $(AMIGA_SRC)
 
 # Generated once per checkout so every checkout has its own key.
@@ -73,7 +73,7 @@ build/test_crypto.68k: tests/test_crypto.c tests/crypto_vectors.h $(CRYPTO) src/
 build/test_crypto-060.68k: tests/test_crypto.c tests/crypto_vectors.h $(CRYPTO) src/crypto.h src/mul32.h | build
 	$(AMIGA_CC) $(AMIGA_CFLAGS_060) -o $@ tests/test_crypto.c $(CRYPTO)
 
-# same RSA objects and dispatch as build/rdpserver (vamos reports no 060, so the 020 path)
+# same RSA objects and dispatch as build/RDPServer (vamos reports no 060, so the 020 path)
 build/pipehost.68k: tests/pipehost.c $(AMIGA_CORE) $(RSA_OBJS) $(TP) $(HOSTKEY) $(HDRS) | build
 	$(AMIGA_CC) $(AMIGA_CFLAGS) -DHAVE_HOSTKEY -o $@ tests/pipehost.c $(AMIGA_CORE) $(RSA_OBJS) src/testpattern.c $(HOSTKEY)
 
@@ -163,10 +163,10 @@ test68k-keygen: build/test_keygen.68k build/test_keygen-060.68k
 # Aminet release: the version comes from the $$VER string in src/amiga/main.c
 VERSION = $(shell sed -n 's/.*\$$VER: RDPServer \([0-9.]*\) .*/\1/p' src/amiga/main.c)
 
-release: build/rdpserver dist/RDPServer.readme LICENSE tools/mkicon.py
+release: build/RDPServer dist/RDPServer.readme LICENSE tools/mkicon.py
 	rm -rf build/release build/RDPServer.lha
 	mkdir -p build/release/RDPServer
-	/opt/amiga/bin/m68k-amigaos-strip -o build/release/RDPServer/RDPServer build/rdpserver
+	/opt/amiga/bin/m68k-amigaos-strip -o build/release/RDPServer/RDPServer build/RDPServer
 	sed 's/@VERSION@/$(VERSION)/' dist/RDPServer.readme > build/RDPServer.readme
 	cp build/RDPServer.readme build/release/RDPServer/RDPServer.readme
 	cp LICENSE build/release/RDPServer/LICENSE
