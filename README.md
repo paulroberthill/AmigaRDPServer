@@ -28,10 +28,12 @@ seconds to a few minutes depending on the CPU. It is kept in
 On Windows, run `mstsc /v:<amiga-ip-address>`. If a warning says the identity
 of the remote computer cannot be verified, click Connect. Enter the password
 at the Amiga's login prompt, or save it in mstsc's credentials to skip the
-prompt. Press Ctrl-C in the Amiga Shell to stop the server.
+prompt. Press Ctrl-C in the Amiga Shell to stop the server, or start
+RDPServer again: a second start stops the running server and exits.
 
 You can also start it by double-clicking its icon. Its messages then appear
-in a window; press Ctrl-C in that window to stop it. Set options as tool
+in a window; press Ctrl-C in that window, or double-click the icon again,
+to stop it. Set options as tool
 types in the icon (select it, then Icons > Information). The icon lists them
 in parentheses, which turns them off; remove the parentheses to use one.
 They take the same form as Shell arguments, such as `PORT=3390` or `NOBEEP`;
@@ -61,7 +63,7 @@ These are Shell arguments, or tool types when started from Workbench.
 | `NEWKEY` | Replace the server key with a new one. |
 | `NEGFAIL` | Refuse TLS with an error rather than declining it. Try this if a client won't connect. |
 | `VERBOSE` | Log protocol details to the Shell. |
-| `QUIET` | Print only errors and warnings, not the startup and connection messages. From Workbench, no window opens unless there is one, so there is then no window to press Ctrl-C in. |
+| `QUIET` | Print only errors and warnings, not the startup and connection messages. From Workbench, no window opens unless there is one; double-click the icon again to stop it. |
 
 ### Keeping the password out of scripts
 

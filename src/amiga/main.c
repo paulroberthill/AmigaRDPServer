@@ -1188,6 +1188,50 @@ static void wb_args_free(struct RDArgs *src, char *line)
     free(line);
 }
 
+/* ------------------------------------------------------------------ */
+/* One server at a time: starting it again stops the running one      */
+/* ------------------------------------------------------------------ */
+
+#define PORT_NAME "RDPServer"
+
+static struct MsgPort *public_port;
+
+/*
+ * If a server is already running, send it Ctrl-C and return 1. Otherwise
+ * make our public port, so a later start can find us, and return 0 (or -1
+ * if out of memory). This lets a server with no window (QUIET from
+ * Workbench) be stopped by double-clicking its icon again.
+ */
+static int claim_or_stop(void)
+{
+    struct MsgPort *mp;
+
+    Forbid();
+    mp = FindPort((STRPTR)PORT_NAME);
+    if (mp) {
+        Signal(mp->mp_SigTask, SIGBREAKF_CTRL_C);
+        Permit();
+        return 1;
+    }
+    public_port = CreateMsgPort();
+    if (public_port) {
+        public_port->mp_Node.ln_Name = (char *)PORT_NAME;
+        public_port->mp_Node.ln_Pri = 0;
+        AddPort(public_port);
+    }
+    Permit();
+    return public_port ? 0 : -1;
+}
+
+static void release_port(void)
+{
+    if (public_port) {
+        RemPort(public_port);
+        DeleteMsgPort(public_port);
+        public_port = NULL;
+    }
+}
+
 int main(void)
 {
     LONG args[13] = { 0 };
@@ -1234,9 +1278,19 @@ int main(void)
         opt.password[0] = 0;
     FreeArgs(rda);
     wb_args_free(src, line);
+    switch (claim_or_stop()) {
+    case 1:
+        if (!opt.quiet)
+            printf("Stopped the running RDPServer.\n");
+        return RETURN_OK;
+    case -1:
+        printf("RDPServer: out of memory\n");
+        return RETURN_FAIL;
+    }
     if (!opt.password[0] && !args[6]) {
         printf("No password: give PASSWORD=..., put one in ENV:RDPServer/Password,\n"
                "or use NOPASSWORD to let anyone who can connect control this Amiga.\n");
+        release_port();
         return RETURN_FAIL;
     }
     if (args[6])
@@ -1246,6 +1300,7 @@ int main(void)
                strpbrk(opt.password, "\" \t") ? " (contains a space or quote)" : "");
     if (opt.bpp != 15 && opt.bpp != 16 && opt.bpp != 24 && opt.bpp != 32) {
         printf("BPP must be 15, 16, 24 or 32\n");
+        release_port();
         return RETURN_FAIL;
     }
     if (opt.interval < 20)
@@ -1254,6 +1309,7 @@ int main(void)
     SocketBase = OpenLibrary((STRPTR)"bsdsocket.library", 4);
     if (!SocketBase) {
         printf("bsdsocket.library not found (is Roadshow running?)\n");
+        release_port();
         return RETURN_FAIL;
     }
     RdpCyberGfxBase = OpenLibrary((STRPTR)"cybergraphics.library", 40);
@@ -1298,7 +1354,7 @@ int main(void)
         goto out;
     }
     if (!opt.quiet) {
-        printf("RDPServer listening on port %ld, %ld bpp, polling every %ld ms, %s. Ctrl-C to quit.\n",
+        printf("RDPServer listening on port %ld, %ld bpp, polling every %ld ms, %s. Ctrl-C (or start it again) to quit.\n",
                (long)opt.port, (long)opt.bpp, (long)opt.interval,
                opt.password[0] ? "password required" : "NO PASSWORD");
         fflush(stdout);
@@ -1362,6 +1418,7 @@ out:
     if (RdpCyberGfxBase)
         CloseLibrary(RdpCyberGfxBase);
     CloseLibrary(SocketBase);
+    release_port();
     memset(opt.password, 0, sizeof(opt.password));
     return rc;
 }
