@@ -54,7 +54,7 @@ These are Shell arguments, or tool types when started from Workbench.
 
     RDPServer [PASSWORD=pw | NOPASSWORD] [PORT=n] [BPP=15|16|24|32]
               [INTERVAL=ms] [SCAN=n] [NOCOMPRESS] [NOCLIPBOARD] [NOBEEP]
-              [NEWKEY] [NEGFAIL] [VERBOSE]
+              [NEWKEY] [NEGFAIL] [VERBOSE] [QUIET]
 
   PASSWORD=pw   Password clients must enter.
   NOPASSWORD    Run without a password. Anyone who can connect gets control.
@@ -70,6 +70,9 @@ These are Shell arguments, or tool types when started from Workbench.
   NEGFAIL       Refuse TLS with an error rather than declining it. Try this
                 if a client won't connect.
   VERBOSE       Log protocol details to the Shell.
+  QUIET         Print only errors and warnings, not the startup and
+                connection messages. From Workbench, no window opens unless
+                there is one, so there is then no window to press Ctrl-C in.
 
 To keep the password out of scripts, leave out PASSWORD= and put the
 password in ENVARC:RDPServer/Password. Copy it to ENV:RDPServer/Password (or

@@ -9,7 +9,7 @@
 /* RDPServer's ReadArgs() template, shared with tests/test_tooltypes.c */
 #define RDPSERVER_TEMPLATE \
     "PORT/K/N,BPP/K/N,INTERVAL/K/N,NEGFAIL/S,VERBOSE/S,PASSWORD/K,NOPASSWORD/S,NOCOMPRESS/S," \
-    "NOCLIPBOARD/S,NOBEEP/S,SCAN/K/N,NEWKEY/S"
+    "NOCLIPBOARD/S,NOBEEP/S,SCAN/K/N,NEWKEY/S,QUIET/S"
 
 /*
  * Build a ReadArgs() command line (ending in "\n") from the NULL-terminated

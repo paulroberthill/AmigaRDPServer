@@ -102,7 +102,7 @@ README_ART = """
 # they are easy to find and switch on in the icon's Information window.
 TOOL_TYPES = [
     '(PORT=3389)', '(BPP=16)', '(INTERVAL=100)', '(SCAN=4)', '(NOCOMPRESS)',
-    '(NOCLIPBOARD)', '(NOBEEP)', '(NEGFAIL)', '(VERBOSE)',
+    '(NOCLIPBOARD)', '(NOBEEP)', '(NEGFAIL)', '(VERBOSE)', '(QUIET)',
 ]
 
 PEN = {'.': 0, 'k': 1, 'w': 2, 'b': 3}

@@ -42,7 +42,7 @@ static int readargs(const char *const *types, LONG *args)
     struct RDArgs *src = AllocDosObject(DOS_RDARGS, NULL), *rda;
     int rc = -1;
 
-    memset(args, 0, 12 * sizeof(LONG));
+    memset(args, 0, 13 * sizeof(LONG));
     if (line && src) {
         src->RDA_Source.CS_Buffer = (UBYTE *)line;
         src->RDA_Source.CS_Length = strlen(line);
@@ -95,15 +95,15 @@ int main(void)
     {
         static const char *const all[] = {
             "PORT=3390", "BPP=24", "INTERVAL=50", "SCAN=2", "NEGFAIL", "VERBOSE",
-            "NOCOMPRESS", "NOCLIPBOARD", "NOBEEP", "NEWKEY", "(NOPASSWORD)", "DONOTWAIT", NULL
+            "NOCOMPRESS", "NOCLIPBOARD", "NOBEEP", "NEWKEY", "QUIET", "(NOPASSWORD)", "DONOTWAIT", NULL
         };
         static const char *const bad_num[] = { "PORT=abc", NULL };
-        LONG a[12];
+        LONG a[13];
 
         check("ReadArgs: all options", !readargs(all, a) &&
               a[0] && *(LONG *)a[0] == 3390 && a[1] && *(LONG *)a[1] == 24 &&
               a[2] && *(LONG *)a[2] == 50 && a[10] && *(LONG *)a[10] == 2 &&
-              a[3] && a[4] && !a[5] && !a[6] && a[7] && a[8] && a[9] && a[11]);
+              a[3] && a[4] && !a[5] && !a[6] && a[7] && a[8] && a[9] && a[11] && a[12]);
         check("ReadArgs: escaped password", !readargs(pw, a) && a[5] &&
               !strcmp((const char *)a[5], "a b\"c*d"));
         free((void *)a[5]);

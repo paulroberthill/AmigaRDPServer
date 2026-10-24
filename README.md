@@ -45,7 +45,7 @@ These are Shell arguments, or tool types when started from Workbench.
 
     RDPServer [PASSWORD=pw | NOPASSWORD] [PORT=n] [BPP=15|16|24|32]
               [INTERVAL=ms] [SCAN=n] [NOCOMPRESS] [NOCLIPBOARD] [NOBEEP]
-              [NEWKEY] [NEGFAIL] [VERBOSE]
+              [NEWKEY] [NEGFAIL] [VERBOSE] [QUIET]
 
 | Option | Meaning |
 |--------|---------|
@@ -61,6 +61,7 @@ These are Shell arguments, or tool types when started from Workbench.
 | `NEWKEY` | Replace the server key with a new one. |
 | `NEGFAIL` | Refuse TLS with an error rather than declining it. Try this if a client won't connect. |
 | `VERBOSE` | Log protocol details to the Shell. |
+| `QUIET` | Print only errors and warnings, not the startup and connection messages. From Workbench, no window opens unless there is one, so there is then no window to press Ctrl-C in. |
 
 ### Keeping the password out of scripts
 

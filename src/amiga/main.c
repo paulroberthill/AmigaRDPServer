@@ -98,9 +98,9 @@ static const char version[] __attribute__((used)) = "$VER: RDPServer 1.2.3 (23.1
 
 static struct {
     LONG port, bpp, interval, scan;
-    int negfail, verbose, nocompress, noclipboard, nobeep;
+    int negfail, verbose, nocompress, noclipboard, nobeep, quiet;
     char password[64];
-} opt = { 3389, 16, 100, 4, 0, 0, 0, 0, 0, "" };
+} opt = { 3389, 16, 100, 4, 0, 0, 0, 0, 0, 0, "" };
 
 static ULONG beep_sig;          /* signal mask set by the DisplayBeep() patch */
 
@@ -256,8 +256,10 @@ static int setup_key(int force_new)
     uint32_t e = 0;
 
     if (force_new || load_key(n, d, &e) || rdp_set_server_key(n, d, e)) {
-        printf("Generating this Amiga's server key (once; takes a few seconds)...\n");
-        fflush(stdout);
+        if (!opt.quiet) {
+            printf("Generating this Amiga's server key (once; takes a few seconds)...\n");
+            fflush(stdout);
+        }
         gather_entropy();
         if (rdp_generate_server_key(n, d, &e, get_random, NULL) || rdp_set_server_key(n, d, e)) {
             printf("key generation failed\n");
@@ -265,7 +267,7 @@ static int setup_key(int force_new)
         }
         if (save_key(n, d, e))
             printf("Could not save the key to %s: a new one will be made next time.\n", KEY_FILE);
-        else
+        else if (!opt.quiet)
             printf("Saved to %s.\n", KEY_FILE);
     }
     memset(d, 0, sizeof(d));            /* the core keeps its own copy */
@@ -379,10 +381,12 @@ static int attach_screen(struct Screen *s)
     cap.sc.bytes_pp = cap.src_bytes;
     cap.ncolors = 0;            /* re-read the palette */
     cap.force = 1;
-    printf("capturing screen \"%s\": %dx%d, %s, %d byte(s)/pixel\n",
-           s->Title ? (char *)s->Title : "", s->Width, s->Height,
-           cap.rtg ? "RTG" : "native", cap.src_bytes);
-    fflush(stdout);
+    if (!opt.quiet) {
+        printf("capturing screen \"%s\": %dx%d, %s, %d byte(s)/pixel\n",
+               s->Title ? (char *)s->Title : "", s->Width, s->Height,
+               cap.rtg ? "RTG" : "native", cap.src_bytes);
+        fflush(stdout);
+    }
     return 0;
 }
 
@@ -1099,8 +1103,10 @@ static int serve(LONG fd)
             if (got == CAPTURE_RESIZE) {
                 /* Screen switch to a different size: new buffers, and the
                  * client is told the new desktop size. */
-                printf("front screen is now %dx%d: resizing the session\n", resize_w, resize_h);
-                fflush(stdout);
+                if (!opt.quiet) {
+                    printf("front screen is now %dx%d: resizing the session\n", resize_w, resize_h);
+                    fflush(stdout);
+                }
                 capture_free();
                 if (capture_init(resize_w, resize_h, (int)opt.bpp) ||
                     rdp_session_resize(sess, resize_w, resize_h, cap.wire, 0)) {
@@ -1121,7 +1127,7 @@ static int serve(LONG fd)
         if (rdp_flush(sess))
             break;
     }
-    if (cap.polls)
+    if (cap.polls && !opt.quiet)
         printf("screen polls: %lu, average %lu ms each (20 ms resolution), "
                "%lu KB read per poll, SCAN=%ld\n", (unsigned long)cap.polls,
                (unsigned long)(cap.poll_ms / cap.polls),
@@ -1183,7 +1189,7 @@ static void wb_args_free(struct RDArgs *src, char *line)
 
 int main(void)
 {
-    LONG args[12] = { 0 };
+    LONG args[13] = { 0 };
     int newkey;
     struct RDArgs *rda, *src = NULL;
     char *line = NULL;
@@ -1213,6 +1219,7 @@ int main(void)
     opt.nocompress = args[7] != 0;
     opt.noclipboard = args[8] != 0;
     opt.nobeep = args[9] != 0;
+    opt.quiet = args[12] != 0;
     if (args[10]) opt.scan = *(LONG *)args[10];
     if (opt.scan < 1) opt.scan = 1;
     if (opt.scan > 16) opt.scan = 16;
@@ -1289,10 +1296,12 @@ int main(void)
         printf("cannot listen on port %ld (error %ld)\n", (long)opt.port, (long)Errno());
         goto out;
     }
-    printf("RDPServer listening on port %ld, %ld bpp, polling every %ld ms, %s. Ctrl-C to quit.\n",
-           (long)opt.port, (long)opt.bpp, (long)opt.interval,
-           opt.password[0] ? "password required" : "NO PASSWORD");
-    fflush(stdout);
+    if (!opt.quiet) {
+        printf("RDPServer listening on port %ld, %ld bpp, polling every %ld ms, %s. Ctrl-C to quit.\n",
+               (long)opt.port, (long)opt.bpp, (long)opt.interval,
+               opt.password[0] ? "password required" : "NO PASSWORD");
+        fflush(stdout);
+    }
 
     for (;;) {
         fd_set rfds;
@@ -1313,8 +1322,10 @@ int main(void)
         if (fd < 0)
             continue;
         setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
-        printf("=== connection from %s\n", Inet_NtoA(peer.sin_addr.s_addr));
-        fflush(stdout);
+        if (!opt.quiet) {
+            printf("=== connection from %s\n", Inet_NtoA(peer.sin_addr.s_addr));
+            fflush(stdout);
+        }
         stir(&peer, sizeof(peer));
         switch (serve(fd)) {
         case 1:                         /* Ctrl-C */
@@ -1328,8 +1339,10 @@ int main(void)
             continue;
         }
         CloseSocket(fd);
-        printf("=== connection closed\n");
-        fflush(stdout);
+        if (!opt.quiet) {
+            printf("=== connection closed\n");
+            fflush(stdout);
+        }
     }
 quit:
     rc = RETURN_OK;
