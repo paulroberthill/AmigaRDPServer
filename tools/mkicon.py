@@ -100,7 +100,9 @@ README_ART = """
 
 # The program's options, disabled (in parentheses) at their defaults, so
 # they are easy to find and switch on in the icon's Information window.
+# DONOTWAIT is Workbench's own: "Wait until finished" unchecked.
 TOOL_TYPES = [
+    'DONOTWAIT',
     '(PORT=3389)', '(BPP=16)', '(INTERVAL=100)', '(SCAN=4)', '(NOCOMPRESS)',
     '(NOCLIPBOARD)', '(NOBEEP)', '(NEGFAIL)', '(VERBOSE)', '(QUIET)',
 ]
