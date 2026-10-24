@@ -81,6 +81,7 @@ typedef struct {
     const char *password;
     int no_compress;            /* send bitmaps uncompressed (default: RLE) */
     int verbose;                /* log every PDU */
+    int quiet;                  /* log only warnings and errors */
 } rdp_config;
 
 typedef struct rdp_session rdp_session;

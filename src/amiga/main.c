@@ -1033,6 +1033,7 @@ static int serve(LONG fd)
     cfg.fb_wire = 1;
     cfg.neg_fail = opt.negfail;
     cfg.verbose = opt.verbose;
+    cfg.quiet = opt.quiet;
     cfg.password = opt.password;
     cfg.no_compress = opt.nocompress;
     if (capture_init(cfg.width, cfg.height, cfg.bpp)) {

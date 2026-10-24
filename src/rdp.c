@@ -120,6 +120,8 @@ static void rlog(rdp_session *s, const char *fmt, ...)
 }
 
 #define vlog(s, ...) do { if ((s)->cfg.verbose) rlog((s), __VA_ARGS__); } while (0)
+/* routine progress, not warnings or errors: off with cfg.quiet */
+#define ilog(s, ...) do { if (!(s)->cfg.quiet) rlog((s), __VA_ARGS__); } while (0)
 
 /* ------------------------------------------------------------------ */
 /* Low-level framing                                                  */
@@ -252,7 +254,7 @@ static int clip_send(void *ctx, const uint8_t *data, size_t len)
 
 static void clip_log(void *ctx, const char *msg)
 {
-    rlog((rdp_session *)ctx, "%s", msg);
+    ilog((rdp_session *)ctx, "%s", msg);
 }
 
 static long clip_get(void *ctx, const char **text)
@@ -340,7 +342,7 @@ static int handle_x224_cr(rdp_session *s, stream *in)
         while (q + 1 < in->end && !(q[0] == '\r' && q[1] == '\n'))
             q++;
         if (q + 1 < in->end) {
-            rlog(s, "X.224 CR cookie: %.*s", (int)(q - in->p), (char *)in->p);
+            ilog(s, "X.224 CR cookie: %.*s", (int)(q - in->p), (char *)in->p);
             in->p = q + 2;
         }
     }
@@ -349,7 +351,7 @@ static int handle_x224_cr(rdp_session *s, stream *in)
         s->requested_protocols = s_u32le(in);
         s->neg_req_present = 1;
     }
-    rlog(s, "X.224 CR: negotiation %s, requestedProtocols=0x%x%s%s%s",
+    ilog(s, "X.224 CR: negotiation %s, requestedProtocols=0x%x%s%s%s",
          s->neg_req_present ? "present" : "absent", (unsigned)s->requested_protocols,
          s->requested_protocols & 1 ? " TLS" : "", s->requested_protocols & 2 ? " CredSSP" : "",
          s->requested_protocols & 8 ? " RDSTLS" : "");
@@ -370,12 +372,12 @@ static int handle_x224_cr(rdp_session *s, stream *in)
         cc[n++] = 0; cc[n++] = 0; cc[n++] = 0;
         if (fail) {
             cc[3] = (uint8_t)n;
-            rlog(s, "-> RDP_NEG_FAILURE (SSL_NOT_ALLOWED_BY_SERVER); "
+            ilog(s, "-> RDP_NEG_FAILURE (SSL_NOT_ALLOWED_BY_SERVER); "
                     "client should reconnect with Standard RDP Security");
             send_raw(s, cc, n);
             return -1;
         }
-        rlog(s, "-> RDP_NEG_RSP selectedProtocol=PROTOCOL_RDP");
+        ilog(s, "-> RDP_NEG_RSP selectedProtocol=PROTOCOL_RDP");
     }
     cc[3] = (uint8_t)n;
     s->got_cr = 1;
@@ -464,7 +466,7 @@ static int parse_client_data(rdp_session *s, stream *in)
                 s_skip(&b, 64 + 2);
                 sel = s_u32le(&b);
             }
-            rlog(s, "CS_CORE: version 0x%08x, client \"%s\" build %u, %ux%u, "
+            ilog(s, "CS_CORE: version 0x%08x, client \"%s\" build %u, %ux%u, "
                     "highColorDepth %u, supportedColorDepths 0x%x, earlyCaps 0x%x, "
                     "serverSelectedProtocol %u, keyboard layout 0x%x",
                  (unsigned)ver, cname, (unsigned)build, w, h, hi_depth, supp, early,
@@ -474,7 +476,7 @@ static int parse_client_data(rdp_session *s, stream *in)
         case 0xc002:    /* CS_SECURITY 2.2.1.3.3 */
             enc_methods = s_u32le(&b);
             ext_enc_methods = s_u32le(&b);
-            rlog(s, "CS_SECURITY: encryptionMethods 0x%x ext 0x%x",
+            ilog(s, "CS_SECURITY: encryptionMethods 0x%x ext 0x%x",
                  (unsigned)enc_methods, (unsigned)ext_enc_methods);
             break;
         case 0xc003: {  /* CS_NET 2.2.1.3.4 */
@@ -487,7 +489,7 @@ static int parse_client_data(rdp_session *s, stream *in)
                     s->channel_ids[s->nchannels] = (uint16_t)(MCS_IO_CHANNEL + 1 + s->nchannels);
                     opts = s_u32le(&b);
                     s->channel_opts[s->nchannels] = opts;
-                    rlog(s, "CS_NET: channel \"%s\" options 0x%08x -> id %u",
+                    ilog(s, "CS_NET: channel \"%s\" options 0x%08x -> id %u",
                          s->channel_names[s->nchannels], (unsigned)opts,
                          s->channel_ids[s->nchannels]);
                     if (!strcmp(s->channel_names[s->nchannels], "cliprdr")) {
@@ -501,7 +503,7 @@ static int parse_client_data(rdp_session *s, stream *in)
             break;
         }
         default:
-            rlog(s, "client data block 0x%04x (%u bytes) ignored", type, len);
+            ilog(s, "client data block 0x%04x (%u bytes) ignored", type, len);
             break;
         }
     }
@@ -614,7 +616,7 @@ static int handle_mcs_connect_initial(rdp_session *s, stream *in)
         if (o.err)
             return -1;
         s->got_ci = 1;
-        rlog(s, "-> MCS Connect Response (%u channels, 128-bit RC4, %u-byte certificate)",
+        ilog(s, "-> MCS Connect Response (%u channels, 128-bit RC4, %u-byte certificate)",
              (unsigned)s->nchannels, server_cert_len);
         return send_x224_data(s, start, (size_t)(o.p - start));
     }
@@ -729,7 +731,7 @@ static int send_demand_active(rdp_session *s)
     put_u16le(s->pbuf, (unsigned)(w.p - s->pbuf));
     if (w.err)
         return -1;
-    rlog(s, "-> Demand Active (%dx%d, %d bpp)", s->cfg.width, s->cfg.height, s->cfg.bpp);
+    ilog(s, "-> Demand Active (%dx%d, %d bpp)", s->cfg.width, s->cfg.height, s->cfg.bpp);
     s->demand_sent = 1;
     return send_mcs(s, MCS_IO_CHANNEL, 0, s->pbuf, (size_t)(w.p - s->pbuf), 1);
 }
@@ -746,7 +748,7 @@ static int send_deactivate_all(rdp_session *s)
     p[8] = (uint8_t)(SHARE_ID >> 16); p[9] = (uint8_t)(SHARE_ID >> 24);
     put_u16le(p + 10, 1);           /* lengthSourceDescriptor */
     p[12] = 0;                      /* sourceDescriptor */
-    rlog(s, "-> Deactivate All");
+    ilog(s, "-> Deactivate All");
     return send_mcs(s, MCS_IO_CHANNEL, 0, p, 13, 1);
 }
 
@@ -759,7 +761,7 @@ static int send_license_valid_client(rdp_session *s)
         0x02, 0x00, 0x00, 0x00,     /* ST_NO_TRANSITION */
         0x04, 0x00, 0x00, 0x00      /* BB_ERROR_BLOB, length 0 */
     };
-    rlog(s, "-> License Error PDU (valid client)%s", s->lic_encrypt ? ", encrypted" : "");
+    ilog(s, "-> License Error PDU (valid client)%s", s->lic_encrypt ? ", encrypted" : "");
     return send_mcs(s, MCS_IO_CHANNEL,
                     SEC_LICENSE_PKT | (s->lic_encrypt ? SEC_LICENSE_ENCRYPT : 0),
                     lic, sizeof(lic), s->lic_encrypt);
@@ -786,20 +788,20 @@ static void parse_confirm_active(rdp_session *s, stream *in)
         if (type == 1) {
             s_skip(&c, 10);
             s->client_extra_flags = s_u16le(&c);
-            rlog(s, "  client General caps: extraFlags 0x%04x", s->client_extra_flags);
+            ilog(s, "  client General caps: extraFlags 0x%04x", s->client_extra_flags);
         } else if (type == 2) {
             unsigned bpp = s_u16le(&c), w, h;
             s_skip(&c, 6);
             w = s_u16le(&c); h = s_u16le(&c);
             /* mstsc echoes its own requested size/depth here but still uses
              * the server's Demand Active values, so this is informational. */
-            rlog(s, "  client Bitmap caps: %u bpp, %ux%u", bpp, w, h);
+            ilog(s, "  client Bitmap caps: %u bpp, %ux%u", bpp, w, h);
         } else if (type == 13) {
-            rlog(s, "  client Input caps: flags 0x%04x", s_u16le(&c));
+            ilog(s, "  client Input caps: flags 0x%04x", s_u16le(&c));
         } else
             vlog(s, "  client capability %u (%u bytes)", type, len);
     }
-    rlog(s, "<- Confirm Active (%u capability sets)", ncaps);
+    ilog(s, "<- Confirm Active (%u capability sets)", ncaps);
 }
 
 static int send_synchronize(rdp_session *s)
@@ -1120,7 +1122,7 @@ static void login_changed(rdp_session *s)
 
 static int auth_success(rdp_session *s)
 {
-    rlog(s, "client authenticated");
+    ilog(s, "client authenticated");
     s->authed = 1;
     login_free(s->login);
     s->login = NULL;
@@ -1328,10 +1330,10 @@ static int handle_client_info(rdp_session *s, stream *in)
     read_info_string(in, cb_user, unicode, user, sizeof(user));
     read_info_string(in, cb_pass, unicode, pass, sizeof(pass));
     if (in->err) {
-        rlog(s, "<- Client Info (flags 0x%08x, truncated)", (unsigned)flags);
+        ilog(s, "<- Client Info (flags 0x%08x, truncated)", (unsigned)flags);
         pass[0] = 0;
     } else
-        rlog(s, "<- Client Info: user \"%s\" domain \"%s\" flags 0x%08x, %s password",
+        ilog(s, "<- Client Info: user \"%s\" domain \"%s\" flags 0x%08x, %s password",
              user, domain, (unsigned)flags, pass[0] ? "with" : "no");
 
     /* Saved credentials: check them now; otherwise the prompt asks. */
@@ -1353,11 +1355,11 @@ static int handle_data_pdu(rdp_session *s, stream *in)
 
     switch (type2) {
     case PDUTYPE2_SYNCHRONIZE:
-        rlog(s, "<- Synchronize");
+        ilog(s, "<- Synchronize");
         return send_synchronize(s);
     case PDUTYPE2_CONTROL: {
         unsigned action = s_u16le(in);
-        rlog(s, "<- Control action %u", action);
+        ilog(s, "<- Control action %u", action);
         if (action == CTRLACTION_COOPERATE)
             return send_control(s, CTRLACTION_COOPERATE, 0, 0);
         if (action == CTRLACTION_REQUEST_CONTROL)
@@ -1365,13 +1367,13 @@ static int handle_data_pdu(rdp_session *s, stream *in)
         return 0;
     }
     case PDUTYPE2_PERSISTENT_LIST:
-        rlog(s, "<- Persistent Key List");
+        ilog(s, "<- Persistent Key List");
         return 0;
     case PDUTYPE2_FONTLIST:
-        rlog(s, "<- Font List");
+        ilog(s, "<- Font List");
         if (send_font_map(s) || send_default_pointer(s))
             return -1;
-        rlog(s, "connection sequence complete; %s",
+        ilog(s, "connection sequence complete; %s",
              s->authed ? "session active" : "showing login prompt");
         s->active = 1;
         s->palette_dirty = 1;
@@ -1393,7 +1395,7 @@ static int handle_data_pdu(rdp_session *s, stream *in)
     }
     case PDUTYPE2_SUPPRESS_OUTPUT: {
         unsigned allow = s_u8(in);
-        rlog(s, "<- Suppress Output: %s", allow ? "resume" : "suppress");
+        ilog(s, "<- Suppress Output: %s", allow ? "resume" : "suppress");
         s->suppress = !allow;
         if (allow)
             mark_dirty(s, 0, 0, s->cfg.width, s->cfg.height);
@@ -1403,7 +1405,7 @@ static int handle_data_pdu(rdp_session *s, stream *in)
         vlog(s, "<- Shutdown Request -> Shutdown Denied");
         return send_data_pdu(s, PDUTYPE2_SHUTDOWN_DENIED, 0);
     default:
-        rlog(s, "<- data PDU type2 0x%02x ignored", type2);
+        ilog(s, "<- data PDU type2 0x%02x ignored", type2);
         return 0;
     }
 }
@@ -1431,7 +1433,7 @@ static int handle_send_data_request(rdp_session *s, stream *in)
             return -1;
         }
         s->lic_encrypt = (flags & SEC_LICENSE_ENCRYPT) != 0;
-        rlog(s, "<- Security Exchange: session keys derived");
+        ilog(s, "<- Security Exchange: session keys derived");
         return 0;
     }
     if (!s->sec.ready) {
@@ -1458,7 +1460,7 @@ static int handle_send_data_request(rdp_session *s, stream *in)
         return 0;
     }
     if (flags & SEC_LICENSE_PKT) {
-        rlog(s, "<- licensing PDU ignored");
+        ilog(s, "<- licensing PDU ignored");
         return 0;
     }
 
@@ -1486,7 +1488,7 @@ static int handle_send_data_request(rdp_session *s, stream *in)
                 return -1;
             break;
         default:
-            rlog(s, "<- share control PDU type %u ignored", type & 0xf);
+            ilog(s, "<- share control PDU type %u ignored", type & 0xf);
             break;
         }
     }
@@ -1504,14 +1506,14 @@ static int handle_mcs(rdp_session *s, stream *in)
         vlog(s, "<- MCS Erect Domain");
         return 0;
     case 8:                         /* disconnectProviderUltimatum */
-        rlog(s, "<- MCS Disconnect Provider Ultimatum");
+        ilog(s, "<- MCS Disconnect Provider Ultimatum");
         return -1;
     case 10:                        /* attachUserRequest */
         /* Windows numbers the user channel after the static channels. */
         s->user_id = MCS_IO_CHANNEL + 1 + (unsigned)s->nchannels;
         reply[0] = 0x2e; reply[1] = 0;
         reply[2] = (uint8_t)((s->user_id - 1001) >> 8); reply[3] = (uint8_t)(s->user_id - 1001);
-        rlog(s, "<- MCS Attach User -> user channel %u", s->user_id);
+        ilog(s, "<- MCS Attach User -> user channel %u", s->user_id);
         return send_x224_data(s, reply, 4);
     case 14: {                      /* channelJoinRequest */
         unsigned chan;
@@ -1527,7 +1529,7 @@ static int handle_mcs(rdp_session *s, stream *in)
     case 25:                        /* sendDataRequest */
         return handle_send_data_request(s, in);
     default:
-        rlog(s, "<- MCS PDU %u ignored", choice);
+        ilog(s, "<- MCS PDU %u ignored", choice);
         return 0;
     }
 }
@@ -1567,7 +1569,7 @@ int rdp_session_process(rdp_session *s)
         if (!s->got_cr)
             return handle_x224_cr(s, &in);
         if (b[5] == 0x80) {                         /* X.224 Disconnect Request */
-            rlog(s, "<- X.224 Disconnect Request");
+            ilog(s, "<- X.224 Disconnect Request");
             return -1;
         }
         if (b[4] != 2 || b[5] != 0xf0)
@@ -1639,7 +1641,7 @@ int rdp_session_resize(rdp_session *s, int width, int height, const uint8_t *fb,
         login_free(s->login);
         s->login = l;
     }
-    rlog(s, "desktop resized to %dx%d", width, height);
+    ilog(s, "desktop resized to %dx%d", width, height);
     if (!s->demand_sent)            /* the first Demand Active will carry it */
         return 0;
     /*
@@ -1702,7 +1704,7 @@ void rdp_session_free(rdp_session *s)
         if (s->stat_tiles) {
             /* per mille, without overflowing 32-bit longs on the Amiga */
             unsigned long pm = s->stat_raw >= 1000 ? s->stat_sent / (s->stat_raw / 1000) : 1000;
-            rlog(s, "sent %lu tiles: %lu KB of %lu KB raw (%lu.%lu%%)", s->stat_tiles,
+            ilog(s, "sent %lu tiles: %lu KB of %lu KB raw (%lu.%lu%%)", s->stat_tiles,
                  s->stat_sent / 1024, s->stat_raw / 1024, pm / 10, pm % 10);
         }
         login_free(s->login);
